@@ -3603,6 +3603,10 @@ h3 {
   padding: 0 14px 14px;
 }
 
+.compatibility-content[hidden] {
+  display: none;
+}
+
 .compatibility-banner p {
   margin: 0;
   color: #bdd2d6;
@@ -3623,6 +3627,7 @@ h3 {
 }
 
 .compatibility-links a {
+  flex: 0 0 auto;
   min-height: 34px;
   border: 1px solid rgba(105, 174, 251, 0.36);
   border-radius: 7px;
@@ -3633,7 +3638,18 @@ h3 {
   text-decoration: none;
   font-size: 12px;
   font-weight: 900;
+  white-space: nowrap;
   background: rgba(105, 174, 251, 0.08);
+}
+
+@media (max-width: 1200px) {
+  .compatibility-content {
+    grid-template-columns: 1fr;
+  }
+
+  .compatibility-links {
+    justify-content: flex-start;
+  }
 }
 
 .dashboard-reference .panel {

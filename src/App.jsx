@@ -4530,11 +4530,11 @@ function CompatibilityBanner({ t, expanded, onExpandedChange }) {
           <a href="https://github.com/gzenux/asuswrt-rtn18u" target="_blank" rel="noreferrer">
             {t('firmwareRepository')}
           </a>
+          <a href="https://hattimon.github.io/SmartWAN-Manager/" target="_blank" rel="noreferrer">
+            {t('smartwanManagerSite')}
+          </a>
           <a href="https://github.com/hattimon/SmartWAN-Manager" target="_blank" rel="noreferrer">
             {t('smartwanManagerRepository')}
-          </a>
-          <a href="https://gzenux.github.io/asuswrt-rtn18u/#installation" target="_blank" rel="noreferrer">
-            {t('installInstructions')}
           </a>
         </div>
       </div>
