@@ -1,0 +1,74 @@
+# SmartWAN configuration managed by SmartWAN Manager.
+# This file lives on the router and is the source of truth for SmartWAN.
+
+enabled=0
+active_preset=''
+
+# Optional default route policy.
+# manual_rules leaves the router default route alone.
+# primary_failover can keep the main default route on primary_wan and switch it to failover_wan.
+routing_mode='manual_rules'
+orchestration_enabled=0
+orchestration_mode='observe_only'
+auto_discover_wans=1
+health_probe_strategy='per_wan_public_ipv4'
+health_probe_policy='majority'
+failover_action='runtime_policy_override'
+restore_action='restore_dualwan_balance'
+suspend_asus_rules_on_failover=1
+restore_asus_rules_on_recovery=1
+conntrack_on_switch='failed_wan'
+remembered_dualwan_preset=''
+primary_wan='wan0'
+failover_wan='wan1'
+manage_main_default=0
+
+wan0_label=''
+wan1_label=''
+
+# Optional explicit routing details. Leave empty to let smartwanctl try nvram defaults.
+wan0_ifname=''
+wan1_ifname=''
+wan0_gateway=''
+wan1_gateway=''
+wan0_table='100'
+wan1_table='101'
+
+# One rule per line in the panel, stored here as semicolon separated values.
+# Supported host rules: 10.0.0.50=wan0;10.0.0.60=wan1
+# Supported service rules for direct CIDR routing: 203.0.113.10/32=wan1;198.51.100.0/24=wan0
+# Domain rules use dnsmasq + ipset + iptables. Keep disabled unless the panel reports support.
+# When disabled, domain_rules are stored but not applied.
+host_rules=''
+service_rules=''
+domain_rules_enabled=0
+domain_rules=''
+
+watchdog_enabled=0
+watchdog_targets='1.1.1.1;9.9.9.9;208.67.222.222'
+watchdog_interval=1
+watchdog_fail_count=2
+watchdog_recover_count=3
+
+# Persistent OpenVPN policy. Merlin hooks reapply these managed chains after
+# firewall, NAT, WAN and service events without changing the OpenVPN NVRAM.
+vpn_management_enabled=0
+vpn_interface='tun21'
+vpn_subnet='10.8.0.0/24'
+# Optional profiles that inherit the same access, NAT, WAN preference and
+# managed failover policy, for example OpenVPN Server 2:
+vpn_additional_profiles=''
+vpn_lan_subnet='192.168.1.0/24'
+vpn_policy_mode='prefer_wan_with_failover'
+vpn_preferred_wan='wan1'
+vpn_allow_router=1
+vpn_allow_lan=1
+vpn_allow_internet=1
+vpn_nat_enabled=1
+
+# Flash-safe runtime defaults.
+# Keep runtime_dir on /tmp so logs, PID files, and watchdog state stay in RAM instead of JFFS.
+runtime_dir='/tmp'
+log_enabled=1
+log_max_lines=300
+test_mode=0

@@ -1,0 +1,24 @@
+services:
+  smartwan-manager:
+    build: .
+    container_name: smartwan-manager
+    init: true
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      SMARTWAN_DATA_DIR: /data
+      SMARTWAN_TRUSTED_SUBNETS: "${SMARTWAN_TRUSTED_SUBNETS:-192.168.0.0/16,10.8.0.0/24,10.16.0.0/24,100.64.0.0/10}"
+      SMARTWAN_TRUSTED_PROXIES: "${SMARTWAN_TRUSTED_PROXIES:-}"
+    ports:
+      - "${SMARTWAN_PANEL_PORT:-8888}:8080"
+    volumes:
+      - smartwan-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  smartwan-data:

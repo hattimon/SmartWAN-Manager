@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Aurelka WAN status legend</title>
+  <desc id="desc">Four Aurelka eye states: healthy green, checking orange, one WAN down red and green, and both WANs down red.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#071b21"/>
+      <stop offset="1" stop-color="#0d2930"/>
+    </linearGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#26343b"/>
+      <stop offset="0.55" stop-color="#080b0e"/>
+      <stop offset="1" stop-color="#1a252b"/>
+    </linearGradient>
+    <filter id="greenGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="orangeGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="redGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <symbol id="cat" viewBox="0 0 130 130">
+      <path d="M25 47 27 11 52 32M78 32l26-21-3 40" fill="url(#fur)" stroke="#86aeb8" stroke-width="3" stroke-linejoin="round"/>
+      <path d="m31 34-1-15 13 14m47 0 10-13-1 17" fill="#70405e" opacity=".75"/>
+      <ellipse cx="65" cy="70" rx="46" ry="41" fill="url(#fur)" stroke="#86aeb8" stroke-width="3"/>
+      <path d="M51 38q8-13 14 1 8-12 14 1" fill="none" stroke="#9ab8c0" stroke-width="3" stroke-linecap="round"/>
+      <path d="m59 79 12 0-6 7z" fill="#ffc247"/>
+      <path d="M65 86q-7 9-14 1m14-1q7 9 14 1" fill="none" stroke="#b8d0d4" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M42 82 4 72m38 19L2 96m86-14 38-10M88 91l40 5" fill="none" stroke="#b8d0d4" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M28 101q37 18 73 0" fill="none" stroke="#17d5e5" stroke-width="4"/>
+      <circle cx="65" cy="108" r="6" fill="#ffc247"/>
+    </symbol>
+  </defs>
+
+  <rect width="1200" height="360" rx="24" fill="url(#background)"/>
+  <text x="40" y="48" fill="#effbfc" font-family="Inter,Segoe UI,sans-serif" font-size="25" font-weight="800">Aurelka · WAN guardian / strażniczka WAN</text>
+  <text x="1160" y="46" text-anchor="end" fill="#7faab1" font-family="Inter,Segoe UI,sans-serif" font-size="14">left eye: wan0 · right eye: wan1</text>
+
+  <g transform="translate(30 76)">
+    <rect width="270" height="250" rx="18" fill="#102b31" stroke="#2d5058"/>
+    <g transform="translate(70 15)"><use href="#cat" width="130" height="130"/><ellipse cx="52" cy="64" rx="10" ry="14" fill="#68ed7a" filter="url(#greenGlow)"/><ellipse cx="78" cy="64" rx="10" ry="14" fill="#68ed7a" filter="url(#greenGlow)"/><ellipse cx="52" cy="65" rx="2.5" ry="8" fill="#061009"/><ellipse cx="78" cy="65" rx="2.5" ry="8" fill="#061009"/></g>
+    <text x="135" y="177" text-anchor="middle" fill="#72e986" font-family="Inter,Segoe UI,sans-serif" font-size="19" font-weight="800">Healthy · Sprawne</text>
+    <text x="135" y="204" text-anchor="middle" fill="#b7d3d7" font-family="Inter,Segoe UI,sans-serif" font-size="14">both WAN links online</text>
+    <text x="135" y="225" text-anchor="middle" fill="#7faab1" font-family="Inter,Segoe UI,sans-serif" font-size="13">oba łącza działają</text>
+  </g>
+
+  <g transform="translate(320 76)">
+    <rect width="270" height="250" rx="18" fill="#102b31" stroke="#5f4824"/>
+    <g transform="translate(70 15)"><use href="#cat" width="130" height="130"/><ellipse cx="52" cy="64" rx="10" ry="14" fill="#ffad32" filter="url(#orangeGlow)"/><ellipse cx="78" cy="64" rx="10" ry="14" fill="#ffad32" filter="url(#orangeGlow)"/><ellipse cx="52" cy="65" rx="2.5" ry="8" fill="#251300"/><ellipse cx="78" cy="65" rx="2.5" ry="8" fill="#251300"/></g>
+    <text x="135" y="177" text-anchor="middle" fill="#ffb447" font-family="Inter,Segoe UI,sans-serif" font-size="19" font-weight="800">Checking · Sprawdzanie</text>
+    <text x="135" y="204" text-anchor="middle" fill="#b7d3d7" font-family="Inter,Segoe UI,sans-serif" font-size="14">reading or confirming recovery</text>
+    <text x="135" y="225" text-anchor="middle" fill="#7faab1" font-family="Inter,Segoe UI,sans-serif" font-size="13">odczyt lub potwierdzanie powrotu</text>
+  </g>
+
+  <g transform="translate(610 76)">
+    <rect width="270" height="250" rx="18" fill="#102b31" stroke="#6c343b"/>
+    <g transform="translate(70 15)"><use href="#cat" width="130" height="130"/><ellipse cx="52" cy="64" rx="10" ry="14" fill="#ff4054" filter="url(#redGlow)"/><ellipse cx="78" cy="64" rx="10" ry="14" fill="#68ed7a" filter="url(#greenGlow)"/><ellipse cx="52" cy="65" rx="2.5" ry="8" fill="#230006"/><ellipse cx="78" cy="65" rx="2.5" ry="8" fill="#061009"/></g>
+    <text x="135" y="177" text-anchor="middle" fill="#ff737f" font-family="Inter,Segoe UI,sans-serif" font-size="19" font-weight="800">One WAN down</text>
+    <text x="135" y="204" text-anchor="middle" fill="#b7d3d7" font-family="Inter,Segoe UI,sans-serif" font-size="14">the other link remains online</text>
+    <text x="135" y="225" text-anchor="middle" fill="#7faab1" font-family="Inter,Segoe UI,sans-serif" font-size="13">awaria jednego łącza</text>
+  </g>
+
+  <g transform="translate(900 76)">
+    <rect width="270" height="250" rx="18" fill="#102b31" stroke="#87333e"/>
+    <g transform="translate(70 15)"><use href="#cat" width="130" height="130"/><ellipse cx="52" cy="64" rx="10" ry="14" fill="#ff4054" filter="url(#redGlow)"/><ellipse cx="78" cy="64" rx="10" ry="14" fill="#ff4054" filter="url(#redGlow)"/><ellipse cx="52" cy="65" rx="2.5" ry="8" fill="#230006"/><ellipse cx="78" cy="65" rx="2.5" ry="8" fill="#230006"/></g>
+    <text x="135" y="177" text-anchor="middle" fill="#ff6573" font-family="Inter,Segoe UI,sans-serif" font-size="19" font-weight="800">Both WANs down</text>
+    <text x="135" y="204" text-anchor="middle" fill="#b7d3d7" font-family="Inter,Segoe UI,sans-serif" font-size="14">critical Internet outage</text>
+    <text x="135" y="225" text-anchor="middle" fill="#7faab1" font-family="Inter,Segoe UI,sans-serif" font-size="13">awaria obu łączy</text>
+  </g>
+</svg>

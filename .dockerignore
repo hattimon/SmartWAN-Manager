@@ -1,0 +1,12 @@
+node_modules
+dist
+data
+.git
+.agents
+.github
+.tmp-deploy
+.tmp-*
+.playwright-cli
+.codex-*.log
+.tmp-qa-data
+npm-debug.log*

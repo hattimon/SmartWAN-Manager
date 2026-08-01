@@ -1,0 +1,16 @@
+node_modules/
+dist/
+data/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+*.authkey
+*.pem
+*.key
+.agents/
+.playwright-cli/
+.tmp-*/
+.codex-*.log
+npm-debug.log*
