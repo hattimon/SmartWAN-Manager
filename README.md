@@ -27,7 +27,7 @@ SmartWAN Manager keeps the ASUS router as the routing backend and adds a safer, 
 - OpenVPN Server 1 and Server 2 policy, profile editor, profile download, LAN/router/Internet access, NAT, and preferred-WAN failover;
 - optional Tailscale subnet-router access and optional exit-node advertisement;
 - optional Cloudflare DDNS synchronization for a selected OpenVPN server and WAN;
-- Ed25519 key generation, router host-key inspection, SSH password/key authentication, and Merlin script installation;
+- Ed25519 key generation (built in or with [hattimon/ssh-key-forge](https://github.com/hattimon/ssh-key-forge)), router host-key inspection, SSH password/key authentication, and Merlin script installation;
 - full and SmartWAN-only backups, restore preview, safety backup, and restore confirmation;
 - persistent WAN failure/recovery archive, live quality tests, routing diagnostics, and conflict warnings;
 - Safe, Basic, Advanced, and Expert interface modes;
@@ -169,7 +169,7 @@ Then configure and authorize Tailscale in the VPN tab. Do not use the overlay on
 
 1. Enable SSH and JFFS custom scripts/configs in the ASUS interface.
 2. Open **Configuration**, enter the router address, SSH port, username, and authentication method, then test SSH.
-3. Prefer **SSH key** → generate Ed25519 key → verify the router host fingerprint → paste the public key into ASUS **Administration → System → Authorized keys**.
+3. Prefer **SSH key** → generate an Ed25519 key in the panel or with [SSH Key Forge](https://github.com/hattimon/ssh-key-forge) → verify the router host fingerprint → paste the public key into ASUS **Administration → System → Authorized keys**.
 4. Open **Scripts** and select **Install / update router scripts**.
 5. Use the guided setup wizard or configure SmartWAN manually.
 6. Preview conflicts and changes, apply, and verify both WAN cards, watchdog status, and important routes.
@@ -202,6 +202,8 @@ In the Docker volume `smartwan-data`:
 Back up the volume and protect it as a credential store.
 
 ### Operations
+
+For optional graphical management of this container and other Docker hosts—locally or remotely—see [hattimon/DCC](https://github.com/hattimon/DCC).
 
 ```sh
 # status
@@ -262,7 +264,7 @@ SmartWAN Manager pozostawia router ASUS jako właściwy silnik routingu i dodaje
 - zarządzane DMZ zależne od WAN-u z symetryczną trasą powrotną;
 - polityka OpenVPN Server 1 i 2, edytor i pobieranie profili, dostęp LAN/router/Internet, NAT i preferowany WAN z failover;
 - opcjonalny Tailscale subnet router/exit node oraz Cloudflare DDNS;
-- generowanie klucza Ed25519, kontrola klucza hosta, logowanie SSH hasłem/kluczem i instalacja skryptów Merlin;
+- generowanie klucza Ed25519 (w panelu lub przez [hattimon/ssh-key-forge](https://github.com/hattimon/ssh-key-forge)), kontrola klucza hosta, logowanie SSH hasłem/kluczem i instalacja skryptów Merlin;
 - backup pełny lub tylko SmartWAN, podgląd i bezpieczne przywracanie;
 - trwała historia awarii/odzyskania, testy jakości WAN, diagnostyka tras i ostrzeżenia o konfliktach;
 - tryby interfejsu Bezpieczny, Podstawowy, Zaawansowany i Ekspert;
@@ -375,7 +377,7 @@ Następnie skonfiguruj i autoryzuj urządzenie w zakładce VPN. Nie używaj nak�
 
 1. Włącz SSH oraz niestandardowe skrypty/configi JFFS w ASUS.
 2. W **Konfiguracji** wpisz adres, port, użytkownika i metodę uwierzytelnienia, po czym przetestuj SSH.
-3. Najlepiej wygeneruj klucz Ed25519, sprawdź fingerprint hosta i wklej klucz publiczny do **Administration → System → Authorized keys**.
+3. Najlepiej wygeneruj klucz Ed25519 w panelu albo przez [SSH Key Forge](https://github.com/hattimon/ssh-key-forge), sprawdź fingerprint hosta i wklej klucz publiczny do **Administration → System → Authorized keys**.
 4. W **Skryptach** wybierz instalację/aktualizację skryptów routera.
 5. Użyj kreatora albo ręcznej konfiguracji SmartWAN.
 6. Sprawdź konflikty i podgląd zmian, zastosuj ustawienia, a następnie zweryfikuj oba WAN-y, watchdog i ważne trasy.
@@ -387,6 +389,8 @@ Instalator zachowuje treść hooków poza blokami `# SMARTWAN MANAGED BEGIN` / `
 Router przechowuje konfigurację, presety, skrypty, hooki i aktywny stan routingu. Logi wykonawcze i ograniczony bufor zdarzeń znajdują się w `/tmp`, czyli w RAM-ie routera.
 
 Wolumin `smartwan-data` przechowuje logowanie panelu, ustawienia połączenia, opcjonalne dane uwierzytelniające, prywatny klucz SSH, backupy, preferencje, grupy reguł, opcjonalne klucze/tokeny usług, profile VPN, notatki Aurelki i trwałą historię WAN. Traktuj go jak magazyn poświadczeń i wykonuj jego backup.
+
+Do opcjonalnego graficznego zarządzania tym kontenerem oraz innymi hostami Docker — lokalnie i zdalnie — możesz użyć [hattimon/DCC](https://github.com/hattimon/DCC).
 
 ```sh
 # stan

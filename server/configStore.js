@@ -19,6 +19,7 @@ const defaults = {
   },
   ui: {
     language: 'en',
+    firmwareCompatibilityExpanded: false,
   },
   auth: {
     username: 'admin',

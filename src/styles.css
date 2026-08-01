@@ -3551,16 +3551,56 @@ h3 {
   border: 1px solid rgba(23, 213, 229, 0.26);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(23, 213, 229, 0.1), rgba(15, 37, 45, 0.78));
-  padding: 12px 14px;
+  overflow: hidden;
+}
+
+.compatibility-toggle {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 14px;
+  background: transparent;
+  color: #eefcff;
+  text-align: left;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.compatibility-toggle:hover,
+.compatibility-toggle:focus-visible {
+  background: rgba(23, 213, 229, 0.08);
+}
+
+.compatibility-toggle-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #9ed0ff;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.compatibility-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.compatibility-banner.is-expanded .compatibility-toggle svg {
+  transform: rotate(180deg);
+}
+
+.compatibility-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
-}
-
-.compatibility-banner h2 {
-  margin: 0 0 5px;
-  font-size: 16px;
+  padding: 0 14px 14px;
 }
 
 .compatibility-banner p {
@@ -5662,7 +5702,7 @@ h3 {
   .insight-strip,
   .route-visualizer,
   .ssh-dashboard-panel,
-  .compatibility-banner,
+  .compatibility-content,
   .rule-columns,
   .panel-grid.two,
   .form-grid,
@@ -8467,7 +8507,7 @@ h3 {
   .dashboard-main-grid,
   .dashboard-lower-grid,
   .ssh-dashboard-panel,
-  .compatibility-banner,
+  .compatibility-content,
   .panel-grid.two,
   .form-grid,
   .stat-grid {

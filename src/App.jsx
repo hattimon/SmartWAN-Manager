@@ -640,6 +640,32 @@ function App() {
     });
   }
 
+  async function updateFirmwareCompatibilityExpanded(expanded) {
+    const previous = settings?.ui?.firmwareCompatibilityExpanded === true;
+    setSettings((current) => ({
+      ...current,
+      ui: {
+        ...(current?.ui || {}),
+        firmwareCompatibilityExpanded: expanded,
+      },
+    }));
+    try {
+      const saved = await api.post('/api/settings', {
+        ui: { firmwareCompatibilityExpanded: expanded },
+      });
+      setSettings(saved);
+    } catch (error) {
+      setSettings((current) => ({
+        ...current,
+        ui: {
+          ...(current?.ui || {}),
+          firmwareCompatibilityExpanded: previous,
+        },
+      }));
+      setNotice(`${t('failed')}: ${error.message}`);
+    }
+  }
+
   async function testSsh() {
     await saveConnectionSettings();
     const result = await run('test-ssh', () => api.post('/api/ssh/test'));
@@ -1132,6 +1158,8 @@ function App() {
             identity={identity}
             connectionState={connectionState}
             configForm={configForm}
+            firmwareCompatibilityExpanded={settings?.ui?.firmwareCompatibilityExpanded === true}
+            onFirmwareCompatibilityExpandedChange={updateFirmwareCompatibilityExpanded}
             onSetup={() => navigateTo('setup')}
           />
         ) : null}
@@ -3996,6 +4024,8 @@ function DashboardPanel({
   identity,
   connectionState,
   configForm,
+  firmwareCompatibilityExpanded,
+  onFirmwareCompatibilityExpandedChange,
   onSetup,
 }) {
   const memory = routerState?.memory;
@@ -4026,7 +4056,11 @@ function DashboardPanel({
 
   return (
     <section className="dashboard dashboard-reference">
-      <CompatibilityBanner t={t} />
+      <CompatibilityBanner
+        t={t}
+        expanded={firmwareCompatibilityExpanded}
+        onExpandedChange={onFirmwareCompatibilityExpandedChange}
+      />
 
       <h1 className="page-title">{t('dashboard')}</h1>
 
@@ -4468,30 +4502,43 @@ function RoutePriorityVisualizer({ routes, t, smartwanActive }) {
   );
 }
 
-function CompatibilityBanner({ t }) {
+function CompatibilityBanner({ t, expanded, onExpandedChange }) {
   return (
-    <div className="compatibility-banner">
-      <div>
-        <h2>{t('firmwareCompatibility')}</h2>
-        <p>{t('firmwareCompatibilityCopy')}</p>
-        <p className="panel-purpose-note">{t('panelPurposeCopy')}</p>
-        <p className="panel-purpose-note">{t('panelDependentCopy')}</p>
+    <section className={`compatibility-banner ${expanded ? 'is-expanded' : 'is-collapsed'}`}>
+      <button
+        type="button"
+        className="compatibility-toggle"
+        aria-expanded={expanded}
+        onClick={() => onExpandedChange(!expanded)}
+      >
+        <span>{t('firmwareCompatibility')}</span>
+        <span className="compatibility-toggle-hint">
+          {expanded ? t('collapsePanel') : t('expandPanel')}
+          <ChevronDown size={18} aria-hidden="true" />
+        </span>
+      </button>
+      <div className="compatibility-content" hidden={!expanded}>
+        <div>
+          <p>{t('firmwareCompatibilityCopy')}</p>
+          <p className="panel-purpose-note">{t('panelPurposeCopy')}</p>
+          <p className="panel-purpose-note">{t('panelDependentCopy')}</p>
+        </div>
+        <div className="compatibility-links">
+          <a href="https://gzenux.github.io/asuswrt-rtn18u/" target="_blank" rel="noreferrer">
+            {t('firmwareProjectSite')}
+          </a>
+          <a href="https://github.com/gzenux/asuswrt-rtn18u" target="_blank" rel="noreferrer">
+            {t('firmwareRepository')}
+          </a>
+          <a href="https://github.com/hattimon/SmartWAN-Manager" target="_blank" rel="noreferrer">
+            {t('smartwanManagerRepository')}
+          </a>
+          <a href="https://gzenux.github.io/asuswrt-rtn18u/#installation" target="_blank" rel="noreferrer">
+            {t('installInstructions')}
+          </a>
+        </div>
       </div>
-      <div className="compatibility-links">
-        <a href="https://gzenux.github.io/asuswrt-rtn18u/" target="_blank" rel="noreferrer">
-          {t('firmwareProjectSite')}
-        </a>
-        <a href="https://github.com/gzenux/asuswrt-rtn18u" target="_blank" rel="noreferrer">
-          {t('firmwareRepository')}
-        </a>
-        <a href="https://github.com/hattimon/SmartWAN-Manager" target="_blank" rel="noreferrer">
-          {t('smartwanManagerRepository')}
-        </a>
-        <a href="https://gzenux.github.io/asuswrt-rtn18u/#installation" target="_blank" rel="noreferrer">
-          {t('installInstructions')}
-        </a>
-      </div>
-    </div>
+    </section>
   );
 }
 

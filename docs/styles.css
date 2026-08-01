@@ -1,10 +1,10 @@
 :root {
-  --ink: #132326;
-  --muted: #617376;
-  --line: #d7dfdc;
-  --panel: #f7faf9;
-  --accent: #0d9488;
-  --dark: #172326;
+  --ink: #f1efe6;
+  --muted: #bec8c4;
+  --line: #3b4744;
+  --panel: #232a29;
+  --accent: #4fc8bb;
+  --dark: #151b1b;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -15,7 +15,11 @@
 
 body {
   margin: 0;
-  background: #edf2f1;
+  background-color: #1b211f;
+  background-image:
+    radial-gradient(circle at 16% 22%, rgba(255, 255, 255, 0.025), transparent 34%),
+    radial-gradient(circle at 82% 68%, rgba(88, 155, 142, 0.035), transparent 38%),
+    repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 7px);
   color: var(--ink);
 }
 
@@ -24,8 +28,11 @@ a {
 }
 
 .site-header {
-  background: var(--dark);
+  background:
+    linear-gradient(rgba(21, 27, 27, 0.94), rgba(21, 27, 27, 0.94)),
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 8px);
   color: #eef8f6;
+  border-bottom: 1px solid #33413e;
 }
 
 nav {
@@ -46,6 +53,25 @@ nav a {
   color: #cfe5e1;
   text-decoration: none;
   font-size: 14px;
+}
+
+.language-button {
+  appearance: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: #9fb7b2;
+  padding: 5px 0;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.language-button:hover,
+.language-button:focus-visible,
+.language-button.is-active {
+  border-bottom-color: var(--accent);
+  color: #e7f6f2;
 }
 
 .hero {
@@ -169,6 +195,7 @@ article {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 18px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
 }
 
 .aurelka-band img {

@@ -3,130 +3,251 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="SmartWAN Manager — bilingual Docker administration panel for ASUS RT-N18U SmartWAN and Dual WAN." />
+    <meta name="description" content="SmartWAN Manager — Docker administration panel for ASUS RT-N18U SmartWAN and Dual WAN." />
     <title>SmartWAN Manager for ASUS RT-N18U</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <nav>
-        <strong>SmartWAN Manager</strong>
-        <a href="#english">English</a>
-        <a href="#polski">Polski</a>
-        <a href="https://github.com/hattimon/SmartWAN-Manager">GitHub</a>
-        <a href="https://github.com/gzenux/asuswrt-rtn18u">Firmware</a>
-      </nav>
-      <section class="hero">
-        <div>
-          <span class="eyebrow">ASUS RT-N18U · firmware 386.3_3</span>
-          <h1>SmartWAN Manager</h1>
-          <p>
-            Local English/Polish Docker panel for SmartWAN, ASUS Dual WAN, VPN, DMZ,
-            failover monitoring, diagnostics, backups, and router automation over SSH.
-          </p>
-          <div class="hero-actions">
-            <a class="button" href="https://github.com/hattimon/SmartWAN-Manager">Open repository</a>
-            <a class="button secondary" href="#install">Installation</a>
+    <div data-language-view="en">
+      <header class="site-header">
+        <nav aria-label="Primary navigation">
+          <strong>SmartWAN Manager</strong>
+          <button class="language-button is-active" type="button" data-set-language="en" aria-pressed="true">English</button>
+          <button class="language-button" type="button" data-set-language="pl" aria-pressed="false">Polski</button>
+          <a href="https://github.com/hattimon/SmartWAN-Manager">GitHub</a>
+          <a href="https://github.com/gzenux/asuswrt-rtn18u">Firmware</a>
+        </nav>
+        <section class="hero">
+          <div>
+            <span class="eyebrow">ASUS RT-N18U · firmware 386.3_3</span>
+            <h1>SmartWAN Manager</h1>
+            <p>
+              Local Docker panel for SmartWAN, ASUS Dual WAN, VPN, DMZ, failover monitoring,
+              diagnostics, backups, and router automation over SSH.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="https://github.com/hattimon/SmartWAN-Manager">Open repository</a>
+              <a class="button secondary" href="#installation-en">Installation</a>
+            </div>
           </div>
-        </div>
-        <div class="terminal-preview">
-          <span>Router remains the routing backend</span>
-          <code>/jffs/addons/smartwan.d/</code>
-          <code>router-side watchdog · failover · presets</code>
-          <code>Docker: Raspberry Pi · Ubuntu · PC · WSL 2</code>
-          <code>SSH key authentication preferred</code>
-        </div>
-      </section>
-    </header>
+          <div class="terminal-preview">
+            <span>Router remains the routing backend</span>
+            <code>/jffs/addons/smartwan.d/</code>
+            <code>router-side watchdog · failover · presets</code>
+            <code>Docker: Raspberry Pi · Ubuntu · PC · WSL 2</code>
+            <code>SSH key authentication preferred</code>
+          </div>
+        </section>
+      </header>
 
-    <main>
-      <section class="band" id="english">
-        <h2>Administrative panel</h2>
-        <p>
-          Built for ASUS RT-N18U with the unofficial
-          <a href="https://github.com/gzenux/asuswrt-rtn18u">gzenux Asuswrt-Merlin RT-N18U firmware</a>
-          version <code>386.3_3</code>. Most applied settings continue on the router when the panel is stopped:
-          SmartWAN rules and presets, watchdog/failover, managed VPN/DMZ policy, and Merlin hooks.
-        </p>
-        <p>
-          Keep the container running for WAN country/location checks, Cloudflare DDNS, Tailscale,
-          persistent WAN-event archiving, public status/network map, and Aurelka notifications.
-        </p>
-        <div class="feature-grid">
-          <article><h3>SmartWAN</h3><p>Presets, domain/CIDR/source rules, 1-second default watchdog, 2 failures to switch, 3 successes to return.</p></article>
-          <article><h3>ASUS Dual WAN</h3><p>Port roles, load balance or failover, ratios, service groups, validation, and conflict previews.</p></article>
-          <article><h3>VPN and remote access</h3><p>OpenVPN Server 1/2 policy and profiles, Tailscale subnet routing, and Cloudflare DDNS.</p></article>
-          <article><h3>Safety</h3><p>Ed25519 keys, host fingerprint checks, automatic backups, restore preview, and managed Merlin hook blocks.</p></article>
-          <article><h3>Dashboard</h3><p>Router resources, WAN health, Internet probes, persistent events, logs, and route visualization.</p></article>
-          <article><h3>Network map</h3><p>Read-only trusted-LAN preview, active devices, per-device route, WAN state, and VPN downloads.</p></article>
-          <article><h3>Managed DMZ</h3><p>WAN-aware inbound and return routing with failover-follow or preferred-WAN-only behavior.</p></article>
-          <article><h3>Guided setup</h3><p>Model/firmware detection, diff preview, safety backup, confirmation, script install, and apply.</p></article>
-        </div>
-      </section>
+      <main>
+        <section class="band">
+          <h2>Administrative panel</h2>
+          <p>
+            This panel was created for ASUS RT-N18U running the unofficial
+            <a href="https://github.com/gzenux/asuswrt-rtn18u">gzenux Asuswrt-Merlin RT-N18U firmware</a>
+            version <code>386.3_3</code>. Most applied settings continue to operate on the router after the panel is
+            stopped: SmartWAN rules and presets, router-side watchdog and failover, managed VPN/DMZ policy, and Merlin hooks.
+          </p>
+          <p>
+            Keep the container running for WAN country/location checks, Cloudflare DDNS, Tailscale access,
+            persistent WAN-event archiving, the public status/network map, and Aurelka notifications.
+          </p>
+          <div class="feature-grid">
+            <article><h3>SmartWAN</h3><p>Presets, domain/CIDR/source rules, 1-second default watchdog, 2 failures to switch, and 3 successes to return.</p></article>
+            <article><h3>ASUS Dual WAN</h3><p>Port roles, load balance or failover, ratios, service groups, validation, and conflict previews.</p></article>
+            <article><h3>VPN and remote access</h3><p>OpenVPN Server 1/2 policy and profiles, Tailscale subnet routing, and Cloudflare DDNS.</p></article>
+            <article><h3>Safety</h3><p>Ed25519 keys generated in the panel or with <a href="https://github.com/hattimon/ssh-key-forge">SSH Key Forge</a>, host fingerprint checks, automatic backups, restore preview, and managed Merlin hook blocks.</p></article>
+            <article><h3>Dashboard</h3><p>Router resources, WAN health, Internet probes, persistent events, logs, and route visualization.</p></article>
+            <article><h3>Network map</h3><p>Read-only trusted-LAN preview, active devices, per-device routes, WAN state, and VPN downloads.</p></article>
+            <article><h3>Managed DMZ</h3><p>WAN-aware inbound and return routing with follow-failover or preferred-WAN-only behavior.</p></article>
+            <article><h3>Guided setup</h3><p>Model/firmware detection, change preview, safety backup, confirmation, script installation, and apply.</p></article>
+            <article><h3>Container management</h3><p>Manage SmartWAN Manager and other Docker hosts locally or remotely with <a href="https://github.com/hattimon/DCC">hattimon/DCC</a>.</p></article>
+          </div>
+        </section>
 
-      <section class="band aurelka-band">
-        <h2>Aurelka — guardian of both WAN links</h2>
-        <img src="./aurelka-status.svg" alt="Aurelka eye colors for healthy, checking, one-WAN-down, and both-WANs-down states" />
-        <p>
-          Each eye represents one WAN. Green means healthy; orange means checking, stale data, or recovery confirmation;
-          red means that WAN is down. Aurelka identifies the failed link, changes her expression and bulb, and—when sound
-          is enabled—meows twice and repeats every 30 seconds during an outage. New local messages and WAN state changes
-          also pulse the notification bulb.
-        </p>
-      </section>
+        <section class="band aurelka-band">
+          <h2>Aurelka — guardian of both WAN links</h2>
+          <img src="./aurelka-status.svg" alt="Aurelka eye colors for healthy, checking, one-WAN-down, and both-WANs-down states" />
+          <p>
+            Each eye represents one WAN. Green means healthy; orange means checking, stale or missing data, or recovery
+            confirmation; red means that WAN is down. Aurelka identifies the failed link, changes her expression and bulb,
+            and—when sound is enabled—meows twice and repeats every 30 seconds during an outage. New local messages and WAN
+            state changes also pulse the notification bulb.
+          </p>
+        </section>
 
-      <section class="band login-band">
-        <h2>Login screen</h2>
-        <p>
-          There is no factory password. The owner creates it from the Docker host. The page provides username/password
-          login, a signed 12-hour HttpOnly session, language selection, Aurelka controls, password-reset instructions,
-          expandable connection status, and a trusted-network read-only map preview.
-        </p>
-        <pre><code>docker compose exec smartwan-manager node server/setPanelPassword.js admin 'replace-with-a-strong-password'</code></pre>
-      </section>
+        <section class="band login-band">
+          <h2>Login screen</h2>
+          <p>
+            There is no factory password. The owner creates it from the Docker host. The page provides username/password
+            authentication, a signed 12-hour HttpOnly session, language selection, Aurelka controls, password-reset
+            instructions, expandable connection status, and a trusted-network read-only map preview.
+          </p>
+          <pre><code>docker compose exec smartwan-manager node server/setPanelPassword.js admin 'replace-with-a-strong-password'</code></pre>
+        </section>
 
-      <section class="band" id="install">
-        <h2>Install on Raspberry Pi, Ubuntu, or WSL 2</h2>
-        <p>
-          Recommended: 64-bit Linux, 2 GB RAM, 2 GB free storage, Docker Engine with Compose v2, Git, wired LAN,
-          and SSH reachability to the router. A Pi 3B+ with 1 GB and swap is a practical minimum; Pi 4/5 with 2 GB+
-          is preferred.
-        </p>
-        <pre><code>git clone https://github.com/hattimon/SmartWAN-Manager.git
+        <section class="band" id="installation-en">
+          <h2>Install on Raspberry Pi, Ubuntu, or WSL 2</h2>
+          <p>
+            Recommended: 64-bit Linux, 2 GB RAM, 2 GB free storage, Docker Engine with Compose v2, Git, wired LAN,
+            and SSH reachability to the router. A Pi 3B+ with 1 GB and swap is a practical minimum; Pi 4/5 with 2 GB+
+            is preferred.
+          </p>
+          <pre><code>git clone https://github.com/hattimon/SmartWAN-Manager.git
 cd SmartWAN-Manager
 cp .env.example .env
 docker compose up -d --build
 docker compose exec smartwan-manager node server/setPanelPassword.js admin 'replace-with-a-strong-password'</code></pre>
-        <p>Open <code>http://&lt;host-address&gt;:8888</code>. In WSL 2, open <code>http://localhost:8888</code>.</p>
-        <p>Optional Tailscale networking on Linux with <code>/dev/net/tun</code>:</p>
-        <pre><code>docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build</code></pre>
-        <p>See the complete English and Polish installation, feature, security, and operation guide in the <a href="https://github.com/hattimon/SmartWAN-Manager#readme">repository README</a>.</p>
-      </section>
+          <p>Open <code>http://&lt;host-address&gt;:8888</code>. In WSL 2, open <code>http://localhost:8888</code>.</p>
+          <p>Optional Tailscale networking on Linux with <code>/dev/net/tun</code>:</p>
+          <pre><code>docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build</code></pre>
+          <p>
+            See the complete installation, feature, security, and operation guide in the
+            <a href="https://github.com/hattimon/SmartWAN-Manager#readme">repository README</a>.
+          </p>
+        </section>
+      </main>
+    </div>
 
-      <section class="band" id="polski" lang="pl">
-        <h2>Panel Administracyjny</h2>
-        <p>
-          Panel został stworzony dla ASUS RT-N18U z nieoficjalnym firmware
-          <a href="https://github.com/gzenux/asuswrt-rtn18u">gzenux/asuswrt-rtn18u</a> w wersji <code>386.3_3</code>.
-          Reguły i presety SmartWAN, routerowy watchdog/failover, zarządzana polityka VPN/DMZ oraz hooki Merlin działają
-          dalej po zatrzymaniu kontenera.
-        </p>
-        <p>
-          Panel musi pozostać uruchomiony dla monitoringu kraju/lokalizacji WAN, Cloudflare DDNS, Tailscale,
-          trwałej archiwizacji zdarzeń, publicznego statusu/mapy sieci oraz powiadomień Aurelki.
-        </p>
-        <h3>Instalacja</h3>
-        <p>
-          Zalecane są: system Linux 64-bit, 2 GB RAM, 2 GB wolnego miejsca, Docker Engine z Compose v2, Git,
-          stabilny LAN i dostęp SSH do routera. Skopiuj <code>.env.example</code> do <code>.env</code>, uruchom
-          <code>docker compose up -d --build</code>, ustaw hasło komendą widoczną wyżej i otwórz port <code>8888</code>
-          tylko w zaufanej sieci.
-        </p>
-        <p>
-          Pełna polska instrukcja, opis wszystkich zakładek, ekranu logowania, wymagań, Aurelki, Raspberry Pi,
-          Ubuntu i WSL 2 znajduje się w <a href="https://github.com/hattimon/SmartWAN-Manager#polski">README</a>.
-        </p>
-      </section>
-    </main>
+    <div data-language-view="pl" lang="pl" hidden>
+      <header class="site-header">
+        <nav aria-label="Główna nawigacja">
+          <strong>SmartWAN Manager</strong>
+          <button class="language-button" type="button" data-set-language="en" aria-pressed="false">English</button>
+          <button class="language-button is-active" type="button" data-set-language="pl" aria-pressed="true">Polski</button>
+          <a href="https://github.com/hattimon/SmartWAN-Manager">GitHub</a>
+          <a href="https://github.com/gzenux/asuswrt-rtn18u">Firmware</a>
+        </nav>
+        <section class="hero">
+          <div>
+            <span class="eyebrow">ASUS RT-N18U · firmware 386.3_3</span>
+            <h1>SmartWAN Manager</h1>
+            <p>
+              Lokalny panel Docker do obsługi SmartWAN, ASUS Dual WAN, VPN, DMZ, monitoringu failover,
+              diagnostyki, kopii zapasowych i automatyzacji routera przez SSH.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="https://github.com/hattimon/SmartWAN-Manager">Otwórz repozytorium</a>
+              <a class="button secondary" href="#instalacja-pl">Instalacja</a>
+            </div>
+          </div>
+          <div class="terminal-preview">
+            <span>Router pozostaje silnikiem routingu</span>
+            <code>/jffs/addons/smartwan.d/</code>
+            <code>routerowy watchdog · failover · presety</code>
+            <code>Docker: Raspberry Pi · Ubuntu · PC · WSL 2</code>
+            <code>zalecane uwierzytelnianie kluczem SSH</code>
+          </div>
+        </section>
+      </header>
+
+      <main>
+        <section class="band">
+          <h2>Panel Administracyjny</h2>
+          <p>
+            Ten panel został stworzony dla ASUS RT-N18U z nieoficjalną linią firmware
+            <a href="https://github.com/gzenux/asuswrt-rtn18u">gzenux Asuswrt-Merlin RT-N18U</a>
+            w wersji <code>386.3_3</code>. Większość zastosowanych ustawień działa na routerze również po zatrzymaniu panelu:
+            reguły i presety SmartWAN, routerowy watchdog i failover, zarządzana polityka VPN/DMZ oraz hooki Merlin.
+          </p>
+          <p>
+            Kontener powinien pozostać uruchomiony dla sprawdzania kraju/lokalizacji WAN, Cloudflare DDNS, dostępu Tailscale,
+            trwałej archiwizacji zdarzeń WAN, publicznego statusu/mapy sieci oraz powiadomień Aurelki.
+          </p>
+          <div class="feature-grid">
+            <article><h3>SmartWAN</h3><p>Presety, reguły domen/CIDR/źródeł, domyślny interwał 1 sekunda, 2 błędy do przełączenia i 3 sukcesy do powrotu.</p></article>
+            <article><h3>ASUS Dual WAN</h3><p>Role portów, load balance lub failover, proporcje, grupy usług, walidacja i podgląd konfliktów.</p></article>
+            <article><h3>VPN i dostęp zdalny</h3><p>Polityka i profile OpenVPN Server 1/2, routing podsieci Tailscale oraz Cloudflare DDNS.</p></article>
+            <article><h3>Bezpieczeństwo</h3><p>Klucze Ed25519 generowane w panelu lub przez <a href="https://github.com/hattimon/ssh-key-forge">SSH Key Forge</a>, kontrola fingerprintu hosta, automatyczne backupy, podgląd przywracania i zarządzane bloki hooków Merlin.</p></article>
+            <article><h3>Panel stanu</h3><p>Zasoby routera, stan WAN, testy Internetu, trwałe zdarzenia, logi i wizualizacja tras.</p></article>
+            <article><h3>Mapa sieci</h3><p>Podgląd tylko do odczytu dla zaufanego LAN-u, aktywne urządzenia, trasy urządzeń, stan WAN i pobieranie VPN.</p></article>
+            <article><h3>Zarządzane DMZ</h3><p>Reguły wejściowe i trasy powrotne zależne od WAN-u, z podążaniem za failover lub tylko preferowanym WAN-em.</p></article>
+            <article><h3>Kreator konfiguracji</h3><p>Wykrywanie modelu/firmware, podgląd zmian, backup bezpieczeństwa, potwierdzenie, instalacja skryptów i zastosowanie ustawień.</p></article>
+            <article><h3>Zarządzanie kontenerami</h3><p>Zarządzaj SmartWAN Managerem oraz innymi hostami Docker lokalnie lub zdalnie przez <a href="https://github.com/hattimon/DCC">hattimon/DCC</a>.</p></article>
+          </div>
+        </section>
+
+        <section class="band aurelka-band">
+          <h2>Aurelka — strażniczka obu łączy WAN</h2>
+          <img src="./aurelka-status.svg" alt="Kolory oczu Aurelki dla sprawnych łączy, sprawdzania, awarii jednego WAN-u i awarii obu WAN-ów" />
+          <p>
+            Każde oko odpowiada jednemu WAN-owi. Zielone oznacza sprawne łącze; pomarańczowe — sprawdzanie, nieaktualne lub
+            brakujące dane albo potwierdzanie powrotu; czerwone — awarię danego WAN-u. Aurelka wskazuje uszkodzone łącze,
+            zmienia wyraz i kolor żarówki, a przy włączonym dźwięku miauczy dwa razy i powtarza alarm co 30 sekund.
+            Nowe lokalne wiadomości i zmiany stanu WAN również uruchamiają pulsowanie żarówki.
+          </p>
+        </section>
+
+        <section class="band login-band">
+          <h2>Panel logowania</h2>
+          <p>
+            Panel nie ma fabrycznego hasła. Właściciel ustawia je na hoście Dockera. Strona udostępnia logowanie nazwą
+            użytkownika i hasłem, podpisaną 12-godzinną sesję HttpOnly, wybór języka, sterowanie Aurelką, instrukcje resetu
+            hasła, rozwijany stan połączenia oraz podgląd mapy sieci tylko do odczytu dla zaufanej sieci.
+          </p>
+          <pre><code>docker compose exec smartwan-manager node server/setPanelPassword.js admin 'wstaw-tu-mocne-haslo'</code></pre>
+        </section>
+
+        <section class="band" id="instalacja-pl">
+          <h2>Instalacja na Raspberry Pi, Ubuntu lub WSL 2</h2>
+          <p>
+            Zalecane są: 64-bitowy Linux, 2 GB RAM, 2 GB wolnego miejsca, Docker Engine z Compose v2, Git, przewodowy LAN
+            i dostęp SSH do routera. Praktycznym minimum jest Pi 3B+ z 1 GB RAM i swapem; preferowany jest Pi 4/5 z co
+            najmniej 2 GB RAM.
+          </p>
+          <pre><code>git clone https://github.com/hattimon/SmartWAN-Manager.git
+cd SmartWAN-Manager
+cp .env.example .env
+docker compose up -d --build
+docker compose exec smartwan-manager node server/setPanelPassword.js admin 'wstaw-tu-mocne-haslo'</code></pre>
+          <p>Otwórz <code>http://&lt;adres-hosta&gt;:8888</code>. W WSL 2 otwórz <code>http://localhost:8888</code>.</p>
+          <p>Opcjonalna sieć Tailscale na Linuksie z <code>/dev/net/tun</code>:</p>
+          <pre><code>docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d --build</code></pre>
+          <p>
+            Pełna instrukcja instalacji, opis funkcji, bezpieczeństwa i utrzymania znajduje się w
+            <a href="https://github.com/hattimon/SmartWAN-Manager#polski">polskiej części README</a>.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const descriptions = {
+        en: 'SmartWAN Manager — Docker administration panel for ASUS RT-N18U SmartWAN and Dual WAN.',
+        pl: 'SmartWAN Manager — panel administracyjny Docker dla SmartWAN i Dual WAN na ASUS RT-N18U.',
+      };
+
+      function selectLanguage(language, updateUrl = true) {
+        const selected = language === 'pl' ? 'pl' : 'en';
+        document.documentElement.lang = selected;
+        document.title = selected === 'pl'
+          ? 'SmartWAN Manager dla ASUS RT-N18U'
+          : 'SmartWAN Manager for ASUS RT-N18U';
+        document.querySelector('meta[name="description"]').content = descriptions[selected];
+        document.querySelectorAll('[data-language-view]').forEach((view) => {
+          view.hidden = view.dataset.languageView !== selected;
+        });
+        document.querySelectorAll('[data-set-language]').forEach((button) => {
+          const active = button.dataset.setLanguage === selected;
+          button.classList.toggle('is-active', active);
+          button.setAttribute('aria-pressed', String(active));
+        });
+        if (updateUrl) {
+          const url = new URL(window.location.href);
+          if (selected === 'pl') url.searchParams.set('lang', 'pl');
+          else url.searchParams.delete('lang');
+          history.replaceState({}, '', url);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+
+      document.querySelectorAll('[data-set-language]').forEach((button) => {
+        button.addEventListener('click', () => selectLanguage(button.dataset.setLanguage));
+      });
+
+      const requestedLanguage = new URLSearchParams(window.location.search).get('lang');
+      selectLanguage(requestedLanguage === 'pl' ? 'pl' : 'en', false);
+    </script>
   </body>
 </html>
