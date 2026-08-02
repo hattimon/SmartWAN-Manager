@@ -1,10 +1,10 @@
 # SmartWAN Manager for ASUS RT-N18U
 
-[English](#english) · [Polski](#polski) · [Firmware project](https://github.com/gzenux/asuswrt-rtn18u)
+[English](#english) · [Polski](#polski) · [Firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) · [Upstream firmware](https://github.com/gzenux/asuswrt-rtn18u)
 
 Local, bilingual administration panel for SmartWAN and Dual WAN on ASUS RT-N18U. The panel runs in Docker on a Raspberry Pi, Ubuntu Server, a Linux PC, or WSL 2 and manages the router over SSH.
 
-> Firmware target: ASUS RT-N18U running the unofficial [gzenux/asuswrt-rtn18u](https://github.com/gzenux/asuswrt-rtn18u) Asuswrt-Merlin line, version `386.3_3`.
+> Firmware dependency: SmartWAN Manager was created for ASUS RT-N18U running the unofficial [gzenux/asuswrt-rtn18u](https://github.com/gzenux/asuswrt-rtn18u) Asuswrt-Merlin line, version `386.3_3`. The panel does not install or upgrade router firmware. Read the [firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) and prepare the router before installing SmartWAN Manager.
 
 ![Aurelka WAN status legend](docs/aurelka-status.svg)
 
@@ -102,6 +102,20 @@ Router requirements:
 - Docker host port `8888/TCP` available, or another port selected in `.env`.
 
 Optional features need outbound access to their providers. Tailscale additionally needs `/dev/net/tun`, `NET_ADMIN`, `NET_RAW`, and IP forwarding.
+
+### Prepare the router firmware first
+
+SmartWAN Manager is an extension of the unofficial Asuswrt-Merlin RT-N18U firmware; it is not a firmware installer. The supported firmware must already be running before the panel connects to the router and deploys SmartWAN configuration.
+
+Follow this order:
+
+1. Read the complete [RT-N18U firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) and back up the current router configuration.
+2. If the router still runs official AsusWRT, first upgrade the official firmware to `3.0.0.4.382.52288`. This is the preparation baseline stated by the firmware project.
+3. Upload the unofficial Asuswrt-Merlin RT-N18U firmware `386.3_3` through the ASUS web interface. Firmware installation is performed separately from SmartWAN Manager and at the router owner's risk.
+4. After switching from official AsusWRT to this firmware, restore factory defaults with the router's hardware reset button. Configure the router again from a clean state; do not restore a settings backup created under a different firmware version.
+5. Enable SSH and **JFFS custom scripts and configs** in the router interface. Only then install SmartWAN Manager, test its SSH connection and use the setup wizard or **Scripts** section.
+
+At the final stage SmartWAN Manager uses SSH to place its managed scripts, configuration, presets and Merlin hook blocks on JFFS, then applies the selected routing settings. It never replaces the firmware image, bootloader or firmware-upgrade procedure. Keep a current backup before every firmware or routing change.
 
 ### Install on Raspberry Pi
 
@@ -330,6 +344,20 @@ Lewe i prawe oko Aurelki odpowiadają niezależnie za `wan0` i `wan1`:
 | Oprogramowanie | Linux, Docker Engine, Compose v2, Git | aktualny 64-bitowy Linux i bieżący Docker/Compose |
 
 Router wymaga firmware `386.3_3` z [gzenux/asuswrt-rtn18u](https://github.com/gzenux/asuswrt-rtn18u), włączonego SSH i skryptów/configów JFFS. Host panelu musi osiągać port SSH routera. Domyślnie panel używa lokalnego portu `8888/TCP`.
+
+### Najpierw przygotuj firmware routera
+
+SmartWAN Manager jest rozszerzeniem nieoficjalnego firmware Asuswrt-Merlin dla RT-N18U, a nie instalatorem firmware. Obsługiwana wersja musi już działać na routerze, zanim panel połączy się przez SSH i wdroży konfigurację SmartWAN.
+
+Zachowaj następującą kolejność:
+
+1. Przeczytaj pełną [instrukcję instalacji firmware RT-N18U](https://github.com/hattimon/asuswrt-rtn18u/tree/master) i wykonaj kopię bieżącej konfiguracji routera.
+2. Jeżeli router nadal działa na oficjalnym AsusWRT, najpierw zaktualizuj oficjalny firmware do wersji `3.0.0.4.382.52288`. Jest to wersja przygotowawcza wskazana przez projekt firmware.
+3. Przez interfejs WWW routera wgraj nieoficjalny Asuswrt-Merlin RT-N18U `386.3_3`. Instalacja firmware jest wykonywana niezależnie od SmartWAN Managera i na odpowiedzialność właściciela routera.
+4. Po przejściu z oficjalnego AsusWRT przywróć ustawienia fabryczne sprzętowym przyciskiem reset. Skonfiguruj router od nowa; nie przywracaj pliku ustawień utworzonego w innej wersji firmware.
+5. Włącz SSH oraz **niestandardowe skrypty i konfiguracje JFFS**. Dopiero wtedy zainstaluj SmartWAN Manager, sprawdź połączenie SSH i użyj kreatora albo sekcji **Skrypty**.
+
+Na ostatnim etapie SmartWAN Manager przez SSH zapisuje na JFFS zarządzane skrypty, konfigurację, presety i bloki hooków Merlin, a następnie stosuje wybrane ustawienia routingu. Panel nie zastępuje obrazu firmware, bootloadera ani procedury aktualizacji firmware. Przed każdą zmianą firmware lub routingu zachowaj aktualną kopię bezpieczeństwa.
 
 ### Instalacja na Raspberry Pi
 
