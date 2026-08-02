@@ -125,7 +125,7 @@ Follow this order:
 
 At the final stage SmartWAN Manager uses SSH to place its managed scripts, configuration, presets and Merlin hook blocks on JFFS, then applies the selected routing settings. It never replaces the firmware image, bootloader or firmware-upgrade procedure. Keep a current backup before every firmware or routing change.
 
-### Compatibility with other ASUS Asuswrt-Merlin routers
+### Compatibility with other ASUS routers running Asuswrt-Merlin
 
 The **validated and supported target remains ASUS RT-N18U with firmware 386.3_3**. Other ASUS models running [official Asuswrt-Merlin](https://www.asuswrt-merlin.net/) can be technically suitable candidates, but they are not yet certified by this project. A router must expose ASUS Dual WAN and pass the checks below before any managed routing is enabled.
 
