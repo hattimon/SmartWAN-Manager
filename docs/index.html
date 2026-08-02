@@ -14,6 +14,7 @@
           <strong>SmartWAN Manager</strong>
           <button class="language-button is-active" type="button" data-set-language="en" aria-pressed="true">English</button>
           <button class="language-button" type="button" data-set-language="pl" aria-pressed="false">Polski</button>
+          <a class="nav-demo" href="./demo/">Interactive demo</a>
           <a href="https://github.com/hattimon/SmartWAN-Manager">GitHub</a>
           <a href="https://github.com/gzenux/asuswrt-rtn18u">Firmware</a>
         </nav>
@@ -26,21 +27,39 @@
               diagnostics, backups, and router automation over SSH.
             </p>
             <div class="hero-actions">
-              <a class="button" href="https://github.com/hattimon/SmartWAN-Manager">Open repository</a>
+              <a class="button" href="./demo/">Launch interactive demo</a>
+              <a class="button secondary" href="https://github.com/hattimon/SmartWAN-Manager">Open repository</a>
               <a class="button secondary" href="#installation-en">Installation</a>
             </div>
           </div>
-          <div class="terminal-preview">
-            <span>Router remains the routing backend</span>
-            <code>/jffs/addons/smartwan.d/</code>
-            <code>router-side watchdog · failover · presets</code>
-            <code>Docker: Raspberry Pi · Ubuntu · PC · WSL 2</code>
-            <code>SSH key authentication preferred</code>
-          </div>
+          <a class="hero-demo-preview" href="./demo/" aria-label="Open the interactive SmartWAN Manager demo">
+            <img src="./demo/panel-demo-preview.png" alt="SmartWAN Manager interactive demo administrative panel" />
+            <span><i></i> Interactive demo · open panel <b>→</b></span>
+          </a>
         </section>
       </header>
 
       <main>
+        <section class="band demo-overview" id="interactive-demo-en">
+          <div class="section-heading">
+            <div><span class="eyebrow">SAFE BROWSER SANDBOX</span><h2>Test the panel before installing it</h2></div>
+            <span class="online-chip"><i></i> Demo online</span>
+          </div>
+          <p>
+            Explore an interface modeled on the Raspberry Pi panel without connecting to a router. The demo starts in
+            Expert mode and contains fictional ASUS RT-N18U, Starlink, Orange Fiber, VPN, device, routing, backup, and log data.
+          </p>
+          <div class="demo-access-grid">
+            <div class="credential-card"><small>DEMO USERNAME</small><code>demo</code></div>
+            <div class="credential-card"><small>DEMO PASSWORD</small><code>demo</code></div>
+            <div class="demo-capabilities">
+              <span>English / Polski</span><span>11 panel sections</span><span>WAN failure simulation</span><span>Aurelka reactions</span>
+            </div>
+            <a class="button" href="./demo/">Open interactive panel</a>
+          </div>
+          <p class="demo-safety-note">Everything runs locally in the browser. Demo controls never contact your router or save real credentials.</p>
+        </section>
+
         <section class="band">
           <h2>Administrative panel</h2>
           <p>
@@ -116,6 +135,7 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
           <strong>SmartWAN Manager</strong>
           <button class="language-button" type="button" data-set-language="en" aria-pressed="false">English</button>
           <button class="language-button is-active" type="button" data-set-language="pl" aria-pressed="true">Polski</button>
+          <a class="nav-demo" href="./demo/?lang=pl">Demo interaktywne</a>
           <a href="https://github.com/hattimon/SmartWAN-Manager">GitHub</a>
           <a href="https://github.com/gzenux/asuswrt-rtn18u">Firmware</a>
         </nav>
@@ -128,21 +148,39 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
               diagnostyki, kopii zapasowych i automatyzacji routera przez SSH.
             </p>
             <div class="hero-actions">
-              <a class="button" href="https://github.com/hattimon/SmartWAN-Manager">Otwórz repozytorium</a>
+              <a class="button" href="./demo/?lang=pl">Uruchom interaktywne demo</a>
+              <a class="button secondary" href="https://github.com/hattimon/SmartWAN-Manager">Otwórz repozytorium</a>
               <a class="button secondary" href="#instalacja-pl">Instalacja</a>
             </div>
           </div>
-          <div class="terminal-preview">
-            <span>Router pozostaje silnikiem routingu</span>
-            <code>/jffs/addons/smartwan.d/</code>
-            <code>routerowy watchdog · failover · presety</code>
-            <code>Docker: Raspberry Pi · Ubuntu · PC · WSL 2</code>
-            <code>zalecane uwierzytelnianie kluczem SSH</code>
-          </div>
+          <a class="hero-demo-preview" href="./demo/?lang=pl" aria-label="Otwórz interaktywne demo SmartWAN Manager">
+            <img src="./demo/panel-demo-preview.png" alt="Panel Administracyjny w interaktywnym demo SmartWAN Manager" />
+            <span><i></i> Interaktywne demo · otwórz panel <b>→</b></span>
+          </a>
         </section>
       </header>
 
       <main>
+        <section class="band demo-overview" id="interactive-demo-pl">
+          <div class="section-heading">
+            <div><span class="eyebrow">BEZPIECZNY SANDBOX W PRZEGLĄDARCE</span><h2>Przetestuj panel przed instalacją</h2></div>
+            <span class="online-chip"><i></i> Demo online</span>
+          </div>
+          <p>
+            Przejrzyj interfejs wzorowany na panelu z Raspberry Pi bez łączenia z routerem. Demo uruchamia się w trybie
+            Ekspert i zawiera fikcyjne dane ASUS RT-N18U, Starlink, Orange Fiber, VPN, urządzeń, routingu, backupów i logów.
+          </p>
+          <div class="demo-access-grid">
+            <div class="credential-card"><small>LOGIN DEMO</small><code>demo</code></div>
+            <div class="credential-card"><small>HASŁO DEMO</small><code>demo</code></div>
+            <div class="demo-capabilities">
+              <span>English / Polski</span><span>11 sekcji panelu</span><span>Symulacja awarii WAN</span><span>Reakcje Aurelki</span>
+            </div>
+            <a class="button" href="./demo/?lang=pl">Otwórz interaktywny panel</a>
+          </div>
+          <p class="demo-safety-note">Całość działa lokalnie w przeglądarce. Przyciski demo nie łączą się z routerem i nie zapisują prawdziwych danych dostępowych.</p>
+        </section>
+
         <section class="band">
           <h2>Panel Administracyjny</h2>
           <p>
