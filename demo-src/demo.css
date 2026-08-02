@@ -3,7 +3,7 @@
   z-index: 10000;
   left: 14px;
   bottom: 14px;
-  width: min(620px, calc(100vw - 28px));
+  width: min(340px, calc(100vw - 28px));
   color: #e8f5f7;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.42));
 }
@@ -53,7 +53,7 @@
 
 .demo-controller-body {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 1fr;
   align-items: center;
   gap: 12px;
   padding: 9px 12px 12px;
@@ -76,10 +76,9 @@
 .phase-outage .demo-controller-body p { color: #ff858d; }
 
 .demo-controller-body > div {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 .demo-controller button {
@@ -92,6 +91,7 @@
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+  line-height: 1.2;
 }
 
 .demo-controller button:hover,
@@ -105,7 +105,6 @@
 
 @media (max-width: 780px) {
   .demo-controller-body { grid-template-columns: 1fr; }
-  .demo-controller-body > div { justify-content: flex-start; }
 }
 
 @media (max-width: 520px) {
