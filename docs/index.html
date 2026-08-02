@@ -118,6 +118,55 @@
           </div>
         </section>
 
+        <section class="band cross-router-compatibility" id="other-asus-routers-en">
+          <span class="eyebrow">CROSS-ROUTER COMPATIBILITY</span>
+          <h2>Other ASUS routers with Asuswrt-Merlin</h2>
+          <p class="compatibility-lead">
+            ASUS RT-N18U with firmware <code>386.3_3</code> is the only validated and supported target today.
+            Other models from the <a href="https://www.asuswrt-merlin.net/about">official Asuswrt-Merlin supported-model list</a>
+            can be evaluated as experimental candidates only when their own interface provides Dual WAN.
+          </p>
+          <div class="compatibility-grid">
+            <article class="compatibility-card is-validated">
+              <span>VALIDATED</span><h3>RT-N18U · 386.3_3</h3>
+              <p>Full reference platform for scripts, NVRAM, Dual WAN, watchdog, VPN/DMZ policy and recovery behavior.</p>
+            </article>
+            <article class="compatibility-card is-candidate">
+              <span>EXPERIMENTAL CANDIDATE</span><h3>Official Merlin + Dual WAN</h3>
+              <p>Dashboard, SSH diagnostics, JFFS hooks and observe-only monitoring have the best portability.</p>
+            </article>
+            <article class="compatibility-card is-conditional">
+              <span>REQUIRES MODEL TEST</span><h3>Managed routing changes</h3>
+              <p>Dual WAN Apply, failover, port mapping, DMZ and VPN policy depend on each platform's NVRAM, route tables and firewall.</p>
+            </article>
+          </div>
+          <p>
+            The architecture is portable because the panel uploads POSIX shell scripts over SSH, stores them under
+            <code>/jffs/addons/smartwan.d</code>, uses standard Merlin hooks and discovers live WAN interfaces from NVRAM.
+            But applying settings also writes Dual WAN NVRAM, restarts WAN and manages <code>ip rule</code>, <code>ip route</code>
+            and <code>iptables</code>; it is not merely a file uploader.
+          </p>
+          <div class="compatibility-checks">
+            <h3>Compatibility gate for another model</h3>
+            <ul>
+              <li>Official Asuswrt-Merlin support and Dual WAN visible in the router UI.</li>
+              <li>SSH and JFFS custom scripts enabled; working <code>services-start</code>, <code>firewall-start</code>, <code>nat-start</code> and <code>wan-event</code>.</li>
+              <li>Two detected WAN units with interfaces, gateways and separate policy-route tables.</li>
+              <li><code>nvram</code>, <code>ip</code> and <code>iptables</code> available; full router/JFFS backup made first.</li>
+              <li>Initial run with SmartWAN disabled or in Observe only mode—without Setup Wizard or Dual WAN Apply.</li>
+            </ul>
+          </div>
+          <p class="firmware-warning">
+            Candidate families include RT-AX, GT-AX, RT-AX Pro, ZenWiFi Pro and RT/GT-BE models listed by the official project.
+            This is not a certification list. Newer <code>3006.102</code> platforms require separate validation, and an RT-N18U backup or preset must never be restored on another model.
+          </p>
+          <div class="firmware-actions">
+            <a class="button" href="https://www.asuswrt-merlin.net/about">Official supported models</a>
+            <a class="button secondary" href="https://www.asuswrt-merlin.net/features">Asuswrt-Merlin features</a>
+            <a class="button secondary" href="https://github.com/RMerl/asuswrt-merlin/wiki/User-scripts">Merlin user-script hooks</a>
+          </div>
+        </section>
+
         <section class="band aurelka-band">
           <h2>Aurelka — guardian of both WAN links</h2>
           <img src="./aurelka-status.svg" alt="Aurelka eye colors for healthy, checking, one-WAN-down, and both-WANs-down states" />
@@ -272,6 +321,55 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
             <a class="button secondary" href="https://gzenux.github.io/asuswrt-rtn18u/RT-N18U/RT-N18U_386.3_3.trx">Pobierz z oryginalnego źródła</a>
             <a class="button" href="https://github.com/hattimon/asuswrt-rtn18u/tree/master">Przeczytaj instrukcję instalacji firmware</a>
             <a class="button secondary" href="https://github.com/gzenux/asuswrt-rtn18u">Otwórz projekt bazowego firmware</a>
+          </div>
+        </section>
+
+        <section class="band cross-router-compatibility" id="other-asus-routers-pl">
+          <span class="eyebrow">ZGODNOŚĆ Z INNYMI ROUTERAMI</span>
+          <h2>Inne routery ASUS z Asuswrt-Merlin</h2>
+          <p class="compatibility-lead">
+            ASUS RT-N18U z firmware <code>386.3_3</code> jest obecnie jedynym zweryfikowanym i wspieranym celem.
+            Inne modele z <a href="https://www.asuswrt-merlin.net/about">oficjalnej listy Asuswrt-Merlin</a> można oceniać
+            wyłącznie jako eksperymentalnych kandydatów, jeśli ich własny interfejs udostępnia Dual WAN.
+          </p>
+          <div class="compatibility-grid">
+            <article class="compatibility-card is-validated">
+              <span>ZWERYFIKOWANY</span><h3>RT-N18U · 386.3_3</h3>
+              <p>Pełna platforma referencyjna dla skryptów, NVRAM, Dual WAN, watchdoga, polityki VPN/DMZ i zachowania po awarii.</p>
+            </article>
+            <article class="compatibility-card is-candidate">
+              <span>KANDYDAT EKSPERYMENTALNY</span><h3>Oficjalny Merlin + Dual WAN</h3>
+              <p>Największą przenośność mają dashboard, diagnostyka SSH, hooki JFFS i monitoring w trybie obserwacji.</p>
+            </article>
+            <article class="compatibility-card is-conditional">
+              <span>WYMAGA TESTU MODELU</span><h3>Zarządzane zmiany routingu</h3>
+              <p>Zastosowanie Dual WAN, failover, mapowanie portów, DMZ i VPN zależą od NVRAM, tabel routingu i firewalla konkretnej platformy.</p>
+            </article>
+          </div>
+          <p>
+            Architektura jest przenośna, ponieważ panel przesyła przez SSH skrypty POSIX shell, zapisuje je w
+            <code>/jffs/addons/smartwan.d</code>, korzysta ze standardowych hooków Merlin i wykrywa interfejsy WAN z NVRAM.
+            Zastosowanie ustawień zapisuje jednak również NVRAM Dual WAN, restartuje WAN oraz zarządza <code>ip rule</code>,
+            <code>ip route</code> i <code>iptables</code> — panel nie jest wyłącznie uploaderem plików.
+          </p>
+          <div class="compatibility-checks">
+            <h3>Warunki testu innego modelu</h3>
+            <ul>
+              <li>Oficjalne wsparcie Asuswrt-Merlin i Dual WAN widoczny w interfejsie routera.</li>
+              <li>Włączone SSH i skrypty JFFS; działające hooki <code>services-start</code>, <code>firewall-start</code>, <code>nat-start</code> i <code>wan-event</code>.</li>
+              <li>Dwa wykryte WAN-y z interfejsami, bramami i oddzielnymi tabelami routingu.</li>
+              <li>Dostępne <code>nvram</code>, <code>ip</code> i <code>iptables</code> oraz wykonany backup routera/JFFS.</li>
+              <li>Pierwsze uruchomienie przy wyłączonym SmartWAN lub w trybie Tylko obserwacja—bez kreatora i Zastosuj Dual WAN.</li>
+            </ul>
+          </div>
+          <p class="firmware-warning">
+            Rodziny kandydatów obejmują modele RT-AX, GT-AX, RT-AX Pro, ZenWiFi Pro i RT/GT-BE wymienione przez oficjalny projekt.
+            Nie jest to lista certyfikacji. Nowsze platformy <code>3006.102</code> wymagają oddzielnej walidacji, a backupu lub presetu RT-N18U nie wolno przywracać na innym modelu.
+          </p>
+          <div class="firmware-actions">
+            <a class="button" href="https://www.asuswrt-merlin.net/about">Oficjalna lista modeli</a>
+            <a class="button secondary" href="https://www.asuswrt-merlin.net/features">Funkcje Asuswrt-Merlin</a>
+            <a class="button secondary" href="https://github.com/RMerl/asuswrt-merlin/wiki/User-scripts">Hooki skryptów Merlin</a>
           </div>
         </section>
 

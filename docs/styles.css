@@ -463,6 +463,81 @@ article {
   margin-top: 18px;
 }
 
+.cross-router-compatibility {
+  margin-top: 28px;
+}
+
+.compatibility-lead {
+  max-width: 980px;
+  font-size: 17px;
+}
+
+.compatibility-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.compatibility-card {
+  border: 1px solid #345560;
+  border-radius: 9px;
+  background: #081f26;
+  padding: 18px;
+}
+
+.compatibility-card span {
+  display: block;
+  margin-bottom: 9px;
+  color: #77d7ff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.compatibility-card.is-validated {
+  border-color: rgba(55, 220, 131, 0.48);
+}
+
+.compatibility-card.is-validated span {
+  color: #61e596;
+}
+
+.compatibility-card.is-conditional {
+  border-color: rgba(255, 182, 77, 0.46);
+}
+
+.compatibility-card.is-conditional span {
+  color: #ffd27e;
+}
+
+.compatibility-card h3,
+.compatibility-card p {
+  margin: 0;
+}
+
+.compatibility-card p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compatibility-checks {
+  margin: 20px 0;
+  border: 1px solid #345560;
+  border-radius: 9px;
+  background: rgba(8, 31, 38, 0.72);
+  padding: 18px 20px;
+}
+
+.compatibility-checks h3 {
+  margin: 0 0 10px;
+}
+
+.compatibility-checks ul {
+  margin-bottom: 0;
+}
+
 .aurelka-band img {
   display: block;
   width: 100%;
@@ -496,7 +571,8 @@ dt {
 
   .hero,
   .feature-grid,
-  .firmware-flow {
+  .firmware-flow,
+  .compatibility-grid {
     grid-template-columns: 1fr;
   }
 

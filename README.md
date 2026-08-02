@@ -125,6 +125,42 @@ Follow this order:
 
 At the final stage SmartWAN Manager uses SSH to place its managed scripts, configuration, presets and Merlin hook blocks on JFFS, then applies the selected routing settings. It never replaces the firmware image, bootloader or firmware-upgrade procedure. Keep a current backup before every firmware or routing change.
 
+### Compatibility with other ASUS Asuswrt-Merlin routers
+
+The **validated and supported target remains ASUS RT-N18U with firmware 386.3_3**. Other ASUS models running [official Asuswrt-Merlin](https://www.asuswrt-merlin.net/) can be technically suitable candidates, but they are not yet certified by this project. A router must expose ASUS Dual WAN and pass the checks below before any managed routing is enabled.
+
+SmartWAN Manager has a portable foundation: it uploads POSIX shell scripts over SSH, keeps them under `/jffs/addons/smartwan.d`, uses documented Merlin hooks in `/jffs/scripts`, and can discover the live `wan0`/`wan1` interfaces and gateways from NVRAM. The setup wizard also compares a saved profile with the live model and firmware rather than using a global RT-N18U-only allowlist.
+
+However, the panel is **not only a script uploader**. Applying Dual WAN or managed SmartWAN settings can also:
+
+- write `wans_dualwan`, `wans_mode`, `wans_lb_ratio`, `wans_routing_enable`, `wans_routing_rulelist` and model-dependent LAN-port values to NVRAM;
+- restart WAN services;
+- create IPv4 policy routes in the `wan0`/`wan1` or `100`/`101` tables;
+- install `ip rule`, `ip route`, `iptables` and optional `ipset` rules;
+- manage model-sensitive DMZ and OpenVPN routing behavior.
+
+| Panel area | Expected portability to another Merlin router | Requirement / risk |
+|---|---|---|
+| SSH connection, identity, dashboard and read-only diagnostics | High | SSH, `nvram`, `ip`, readable `/jffs` and standard Linux status files. |
+| Script upload and Merlin hooks | High | JFFS custom scripts enabled; `services-start`, `firewall-start`, `nat-start` and `wan-event` must run normally. |
+| WAN discovery and observe-only monitoring | Medium to high | Two active WAN units, non-empty `wan0_ifname`/`wan1_ifname`, gateways and separate route tables. |
+| SmartWAN watchdog and managed failover | Conditional | Legacy-compatible Dual WAN NVRAM, stable policy-route tables and working per-interface IPv4 probes. Test on the specific model. |
+| ASUS Dual WAN **Apply**, LAN-port selection and routing rules | Model-specific | Port identifiers and NVRAM formats vary between platforms. Do not apply before validating and backing up. |
+| Managed DMZ, domain routing and OpenVPN policy | Model-specific | Requires compatible `iptables` chains, `ipset` where used, bridge/interface names and VPN NVRAM/layout. |
+
+The [official supported-model list](https://www.asuswrt-merlin.net/about) is therefore a **candidate pool, not a SmartWAN compatibility list**. Examples include the RT-AX58U/RT-AX3000, RT-AX68U, RT-AX86U/RT-AX86S, RT-AX88U and GT-AX11000 families, plus newer GT-AX, RT-AX Pro, ZenWiFi Pro and RT/GT-BE models. The router must also expose Dual WAN in its own web interface. Newer `3006.102`-based models must be treated as a separate compatibility class because WAN-port mapping, firewall behavior and NVRAM layout can differ from the validated `386` platform.
+
+Safe evaluation procedure for an unvalidated model:
+
+1. Confirm that the exact model appears on the official Merlin supported-model list and that its web UI provides Dual WAN.
+2. Back up the router configuration and the JFFS partition. Use the main router, not an AiMesh node.
+3. Enable SSH and JFFS custom scripts/configs, then connect the panel and use only the dashboard/read-only diagnostics first.
+4. Verify both `wan0` and `wan1`, their interfaces, gateways and route tables. Confirm that `nvram`, `ip` and `iptables` are available; `ipset`, `curl` and `conntrack` are required only by relevant optional features.
+5. Install the scripts with SmartWAN disabled or in **Observe only** mode. Do not use the setup wizard or **ASUS Dual WAN Apply** during the first compatibility check.
+6. Test each WAN separately, confirm that routing and recovery survive a firewall/WAN restart, then enable managed features one at a time.
+
+Until this procedure has been completed and documented for a model/firmware pair, describe it as **experimental**, not supported. Do not restore an RT-N18U backup or preset onto a different model.
+
 ### Install on Raspberry Pi
 
 1. Install a 64-bit Raspberry Pi OS Lite or Ubuntu Server image.
@@ -374,6 +410,42 @@ Zachowaj następującą kolejność:
 5. Włącz SSH oraz **niestandardowe skrypty i konfiguracje JFFS**. Dopiero wtedy zainstaluj SmartWAN Manager, sprawdź połączenie SSH i użyj kreatora albo sekcji **Skrypty**.
 
 Na ostatnim etapie SmartWAN Manager przez SSH zapisuje na JFFS zarządzane skrypty, konfigurację, presety i bloki hooków Merlin, a następnie stosuje wybrane ustawienia routingu. Panel nie zastępuje obrazu firmware, bootloadera ani procedury aktualizacji firmware. Przed każdą zmianą firmware lub routingu zachowaj aktualną kopię bezpieczeństwa.
+
+### Zgodność z innymi routerami ASUS z Asuswrt-Merlin
+
+**Zweryfikowanym i wspieranym celem pozostaje ASUS RT-N18U z firmware 386.3_3.** Inne modele ASUS działające na [oficjalnym Asuswrt-Merlin](https://www.asuswrt-merlin.net/) mogą być technicznie odpowiednimi kandydatami, ale nie są jeszcze certyfikowane przez ten projekt. Router musi udostępniać ASUS Dual WAN i przejść poniższe kontrole przed włączeniem zarządzanego routingu.
+
+Podstawa SmartWAN Managera jest przenośna: panel przesyła przez SSH skrypty POSIX shell, przechowuje je w `/jffs/addons/smartwan.d`, używa udokumentowanych hooków Merlin w `/jffs/scripts` oraz może wykrywać aktualne interfejsy i bramy `wan0`/`wan1` z NVRAM. Kreator porównuje też zapisany profil z bieżącym modelem i firmware, zamiast korzystać z globalnej blokady wyłącznie dla RT-N18U.
+
+Panel **nie jest jednak wyłącznie narzędziem do przesyłania skryptów**. Zastosowanie ustawień Dual WAN lub zarządzanego SmartWAN może również:
+
+- zapisywać do NVRAM `wans_dualwan`, `wans_mode`, `wans_lb_ratio`, `wans_routing_enable`, `wans_routing_rulelist` oraz zależne od modelu ustawienia portu LAN;
+- restartować usługi WAN;
+- tworzyć reguły routingu IPv4 w tabelach `wan0`/`wan1` albo `100`/`101`;
+- instalować reguły `ip rule`, `ip route`, `iptables` i opcjonalnie `ipset`;
+- zarządzać zależnym od modelu routingiem DMZ i OpenVPN.
+
+| Obszar panelu | Przewidywana przenośność na inny router Merlin | Wymaganie / ryzyko |
+|---|---|---|
+| Połączenie SSH, identyfikacja, dashboard i diagnostyka tylko do odczytu | Wysoka | SSH, `nvram`, `ip`, dostępny `/jffs` i standardowe pliki stanu Linuksa. |
+| Przesyłanie skryptów i hooki Merlin | Wysoka | Włączone skrypty JFFS; poprawne działanie `services-start`, `firewall-start`, `nat-start` i `wan-event`. |
+| Wykrywanie WAN i monitoring w trybie obserwacji | Średnia do wysokiej | Dwa aktywne WAN-y, niepuste `wan0_ifname`/`wan1_ifname`, bramy i oddzielne tabele routingu. |
+| Watchdog SmartWAN i zarządzany failover | Warunkowa | Zgodne zmienne NVRAM Dual WAN, stabilne tabele routingu i działające sondy IPv4 wymuszone na interfejsach. Wymaga testu danego modelu. |
+| **Zastosowanie** ASUS Dual WAN, wybór portu LAN i reguły | Zależna od modelu | Identyfikatory portów i formaty NVRAM różnią się między platformami. Nie stosuj przed walidacją i backupem. |
+| Zarządzane DMZ, routing domen i polityka OpenVPN | Zależna od modelu | Wymaga zgodnych łańcuchów `iptables`, `ipset` dla używanych funkcji, nazw mostów/interfejsów oraz układu VPN/NVRAM. |
+
+[Oficjalna lista modeli Asuswrt-Merlin](https://www.asuswrt-merlin.net/about) jest zatem **pulą kandydatów, a nie listą zgodności SmartWAN**. Przykładowe rodziny to RT-AX58U/RT-AX3000, RT-AX68U, RT-AX86U/RT-AX86S, RT-AX88U i GT-AX11000, a także nowsze GT-AX, RT-AX Pro, ZenWiFi Pro oraz RT/GT-BE. Dany router musi dodatkowo udostępniać Dual WAN we własnym interfejsie WWW. Nowsze modele oparte na linii `3006.102` należy traktować jako osobną klasę zgodności, ponieważ mapowanie portów WAN, zachowanie firewalla i układ NVRAM mogą różnić się od zweryfikowanej platformy `386`.
+
+Bezpieczna procedura testu niewalidowanego modelu:
+
+1. Sprawdź, czy dokładny model znajduje się na oficjalnej liście Asuswrt-Merlin i czy jego interfejs WWW udostępnia Dual WAN.
+2. Wykonaj backup konfiguracji routera oraz partycji JFFS. Używaj routera głównego, nie węzła AiMesh.
+3. Włącz SSH i niestandardowe skrypty/configi JFFS, połącz panel i początkowo korzystaj wyłącznie z dashboardu oraz diagnostyki tylko do odczytu.
+4. Zweryfikuj oba WAN-y, ich interfejsy, bramy i tabele routingu. Potwierdź obecność `nvram`, `ip` i `iptables`; `ipset`, `curl` oraz `conntrack` są wymagane tylko przez odpowiednie funkcje opcjonalne.
+5. Zainstaluj skrypty przy wyłączonym SmartWAN lub w trybie **Tylko obserwacja**. Podczas pierwszego testu zgodności nie używaj kreatora ani funkcji **Zastosuj ASUS Dual WAN**.
+6. Przetestuj każde łącze osobno, sprawdź routing i powrót po restarcie firewalla/WAN, a następnie włączaj funkcje zarządzane pojedynczo.
+
+Dopóki ta procedura nie zostanie wykonana i udokumentowana dla konkretnej pary model/firmware, należy określać ją jako **eksperymentalną**, a nie wspieraną. Nie przywracaj backupu ani presetu RT-N18U na innym modelu.
 
 ### Instalacja na Raspberry Pi
 
