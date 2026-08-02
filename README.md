@@ -1,10 +1,10 @@
 # SmartWAN Manager for ASUS RT-N18U
 
-[English](#english) · [Polski](#polski) · [Firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) · [Upstream firmware](https://github.com/gzenux/asuswrt-rtn18u)
+[English](#english) · [Polski](#polski) · [Firmware 386.3_3 download mirror](https://github.com/hattimon/asuswrt-rtn18u/releases/download/386.3_3/RT-N18U_386.3_3.trx) · [Firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) · [Upstream firmware](https://github.com/gzenux/asuswrt-rtn18u)
 
 Local, bilingual administration panel for SmartWAN and Dual WAN on ASUS RT-N18U. The panel runs in Docker on a Raspberry Pi, Ubuntu Server, a Linux PC, or WSL 2 and manages the router over SSH.
 
-> Firmware dependency: SmartWAN Manager was created for ASUS RT-N18U running the unofficial [gzenux/asuswrt-rtn18u](https://github.com/gzenux/asuswrt-rtn18u) Asuswrt-Merlin line, version `386.3_3`. The panel does not install or upgrade router firmware. Read the [firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) and prepare the router before installing SmartWAN Manager.
+> Firmware dependency: SmartWAN Manager was created for [ASUS RT-N18U](https://www.asus.com/Networking/RTN18U) running version `386.3_3` of the unofficial [gzenux/asuswrt-rtn18u](https://github.com/gzenux/asuswrt-rtn18u) firmware line. That project integrates [Asuswrt-Merlin](https://www.asuswrt-merlin.net/) features with the official RT-N18U GPL codebase; from version 384.9 onward its numbering does not map directly to official Asuswrt-Merlin releases. The panel does not install or upgrade router firmware. Read the [firmware installation note](https://github.com/hattimon/asuswrt-rtn18u/tree/master) and prepare the router before installing SmartWAN Manager.
 
 ![Aurelka WAN status legend](docs/aurelka-status.svg)
 
@@ -105,7 +105,15 @@ Optional features need outbound access to their providers. Tailscale additionall
 
 ### Prepare the router firmware first
 
-SmartWAN Manager is an extension of the unofficial Asuswrt-Merlin RT-N18U firmware; it is not a firmware installer. The supported firmware must already be running before the panel connects to the router and deploys SmartWAN configuration.
+SmartWAN Manager is an extension of the unofficial Asuswrt-Merlin RT-N18U firmware; it is not a firmware installer. The firmware project brings [Asuswrt-Merlin](https://www.asuswrt-merlin.net/) features to the [ASUS RT-N18U](https://www.asus.com/Networking/RTN18U), based on the official RT-N18U GPL codebase. Starting with 384.9, the project's version numbers do not map directly to official Asuswrt-Merlin releases. The supported firmware must already be running before the panel connects to the router and deploys SmartWAN configuration.
+
+#### Stable firmware download: 386.3_3
+
+- **Preserved project mirror:** [download `RT-N18U_386.3_3.trx` from the hattimon fork](https://github.com/hattimon/asuswrt-rtn18u/releases/download/386.3_3/RT-N18U_386.3_3.trx)
+- **Original upstream file:** [download from the gzenux project page](https://gzenux.github.io/asuswrt-rtn18u/RT-N18U/RT-N18U_386.3_3.trx)
+- **SHA-256:** `F6C6DC222B0EC089AC913B3BF75108947B06A91462CA336424EB28BA028A318A`
+
+The release asset in the hattimon fork is an unmodified archival copy of the upstream file. It is retained so the supported firmware remains available if the original binary is moved or removed. Original authorship and applicable licensing terms remain with the upstream project and component owners.
 
 Follow this order:
 
@@ -347,7 +355,15 @@ Router wymaga firmware `386.3_3` z [gzenux/asuswrt-rtn18u](https://github.com/gz
 
 ### Najpierw przygotuj firmware routera
 
-SmartWAN Manager jest rozszerzeniem nieoficjalnego firmware Asuswrt-Merlin dla RT-N18U, a nie instalatorem firmware. Obsługiwana wersja musi już działać na routerze, zanim panel połączy się przez SSH i wdroży konfigurację SmartWAN.
+SmartWAN Manager jest rozszerzeniem nieoficjalnego firmware Asuswrt-Merlin dla RT-N18U, a nie instalatorem firmware. Projekt firmware przenosi funkcje [Asuswrt-Merlin](https://www.asuswrt-merlin.net/) na router [ASUS RT-N18U](https://www.asus.com/Networking/RTN18U), bazując na oficjalnym kodzie GPL tego modelu. Od wersji 384.9 numeracja projektu nie odpowiada bezpośrednio wydaniom oficjalnego Asuswrt-Merlin. Obsługiwana wersja musi już działać na routerze, zanim panel połączy się przez SSH i wdroży konfigurację SmartWAN.
+
+#### Stabilny firmware do pobrania: 386.3_3
+
+- **Kopia zachowana w projekcie:** [pobierz `RT-N18U_386.3_3.trx` z forka hattimon](https://github.com/hattimon/asuswrt-rtn18u/releases/download/386.3_3/RT-N18U_386.3_3.trx)
+- **Oryginalny plik źródłowy:** [pobierz ze strony projektu gzenux](https://gzenux.github.io/asuswrt-rtn18u/RT-N18U/RT-N18U_386.3_3.trx)
+- **SHA-256:** `F6C6DC222B0EC089AC913B3BF75108947B06A91462CA336424EB28BA028A318A`
+
+Plik wydania w forku hattimon jest niezmodyfikowaną kopią archiwalną pliku źródłowego. Kopia jest przechowywana, aby obsługiwana wersja firmware pozostała dostępna także po przeniesieniu lub usunięciu oryginału. Autorstwo oraz właściwe warunki licencyjne pozostają po stronie projektu źródłowego i właścicieli komponentów.
 
 Zachowaj następującą kolejność:
 

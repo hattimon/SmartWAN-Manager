@@ -91,8 +91,15 @@
           <h2>Prepare the router firmware first</h2>
           <p class="firmware-lead">
             SmartWAN Manager extends the supported Asuswrt-Merlin RT-N18U firmware; it does not flash or upgrade firmware.
-            Read the complete installation note and make sure firmware <code>386.3_3</code> is already running before the panel deploys anything over SSH.
+            The underlying project brings <a href="https://www.asuswrt-merlin.net/">Asuswrt-Merlin</a> features to the
+            <a href="https://www.asus.com/Networking/RTN18U">ASUS RT-N18U</a>, based on the official RT-N18U GPL codebase.
+            Starting with 384.9, its version numbers do not map directly to official Asuswrt-Merlin releases.
           </p>
+          <div class="firmware-release">
+            <div><span>STABLE RELEASE</span><strong>386.3_3</strong></div>
+            <p>An unmodified copy is preserved in the hattimon fork so the SmartWAN-supported firmware remains available if the upstream file is moved or removed.</p>
+            <code>SHA-256 · F6C6DC222B0EC089AC913B3BF75108947B06A91462CA336424EB28BA028A318A</code>
+          </div>
           <ol class="firmware-flow">
             <li><strong>Read and back up</strong><span>Review the firmware instructions and save the current router configuration before making changes.</span></li>
             <li><strong>Prepare official AsusWRT</strong><span>If the router still uses official AsusWRT, first upgrade it to <code>3.0.0.4.382.52288</code>.</span></li>
@@ -104,6 +111,8 @@
             Firmware installation is performed at the router owner's risk and may affect the warranty. SmartWAN Manager only manages scripts and settings after the firmware preparation is complete; it does not replace the firmware image or bootloader.
           </p>
           <div class="firmware-actions">
+            <a class="button" href="https://github.com/hattimon/asuswrt-rtn18u/releases/download/386.3_3/RT-N18U_386.3_3.trx">Download preserved firmware copy</a>
+            <a class="button secondary" href="https://gzenux.github.io/asuswrt-rtn18u/RT-N18U/RT-N18U_386.3_3.trx">Download from original source</a>
             <a class="button" href="https://github.com/hattimon/asuswrt-rtn18u/tree/master">Read firmware installation note</a>
             <a class="button secondary" href="https://github.com/gzenux/asuswrt-rtn18u">View upstream firmware project</a>
           </div>
@@ -239,8 +248,15 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
           <h2>Najpierw przygotuj firmware routera</h2>
           <p class="firmware-lead">
             SmartWAN Manager rozszerza obsługiwany firmware Asuswrt-Merlin RT-N18U; nie służy do wgrywania ani aktualizowania firmware.
-            Przeczytaj pełną instrukcję i upewnij się, że wersja <code>386.3_3</code> działa na routerze, zanim panel zacznie wdrażać elementy przez SSH.
+            Projekt bazowy przenosi funkcje <a href="https://www.asuswrt-merlin.net/">Asuswrt-Merlin</a> na
+            <a href="https://www.asus.com/Networking/RTN18U">ASUS RT-N18U</a>, wykorzystując oficjalny kod GPL tego modelu.
+            Od wersji 384.9 numeracja projektu nie odpowiada bezpośrednio wydaniom oficjalnego Asuswrt-Merlin.
           </p>
+          <div class="firmware-release">
+            <div><span>STABILNE WYDANIE</span><strong>386.3_3</strong></div>
+            <p>Niezmodyfikowana kopia jest zachowana w forku hattimon, aby firmware obsługiwany przez SmartWAN pozostał dostępny po przeniesieniu lub usunięciu pliku źródłowego.</p>
+            <code>SHA-256 · F6C6DC222B0EC089AC913B3BF75108947B06A91462CA336424EB28BA028A318A</code>
+          </div>
           <ol class="firmware-flow">
             <li><strong>Przeczytaj i wykonaj backup</strong><span>Zapoznaj się z instrukcją firmware i zapisz bieżącą konfigurację routera przed rozpoczęciem zmian.</span></li>
             <li><strong>Przygotuj oficjalny AsusWRT</strong><span>Jeżeli router nadal działa na oficjalnym AsusWRT, najpierw zaktualizuj go do wersji <code>3.0.0.4.382.52288</code>.</span></li>
@@ -252,6 +268,8 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
             Instalacja firmware odbywa się na odpowiedzialność właściciela routera i może wpływać na gwarancję. SmartWAN Manager zarządza skryptami i ustawieniami dopiero po przygotowaniu firmware; nie zastępuje obrazu firmware ani bootloadera.
           </p>
           <div class="firmware-actions">
+            <a class="button" href="https://github.com/hattimon/asuswrt-rtn18u/releases/download/386.3_3/RT-N18U_386.3_3.trx">Pobierz zachowaną kopię firmware</a>
+            <a class="button secondary" href="https://gzenux.github.io/asuswrt-rtn18u/RT-N18U/RT-N18U_386.3_3.trx">Pobierz z oryginalnego źródła</a>
             <a class="button" href="https://github.com/hattimon/asuswrt-rtn18u/tree/master">Przeczytaj instrukcję instalacji firmware</a>
             <a class="button secondary" href="https://github.com/gzenux/asuswrt-rtn18u">Otwórz projekt bazowego firmware</a>
           </div>

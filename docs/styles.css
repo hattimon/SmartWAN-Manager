@@ -351,6 +351,51 @@ article {
   font-size: 17px;
 }
 
+.firmware-release {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px 24px;
+  align-items: center;
+  margin: 22px 0;
+  border: 1px solid rgba(86, 203, 255, 0.38);
+  border-radius: 10px;
+  background: rgba(86, 203, 255, 0.06);
+  padding: 18px;
+}
+
+.firmware-release div {
+  grid-row: 1 / span 2;
+  min-width: 150px;
+}
+
+.firmware-release span,
+.firmware-release strong {
+  display: block;
+}
+
+.firmware-release span {
+  color: #77d7ff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.firmware-release strong {
+  margin-top: 4px;
+  color: #f4fbfc;
+  font-size: 25px;
+}
+
+.firmware-release p {
+  margin: 0;
+}
+
+.firmware-release code {
+  overflow-wrap: anywhere;
+  color: #b7cbd0;
+  font-size: 11px;
+}
+
 .firmware-flow {
   counter-reset: firmware-step;
   display: grid;
@@ -453,6 +498,14 @@ dt {
   .feature-grid,
   .firmware-flow {
     grid-template-columns: 1fr;
+  }
+
+  .firmware-release {
+    grid-template-columns: 1fr;
+  }
+
+  .firmware-release div {
+    grid-row: auto;
   }
 
   .hero-demo-preview {
