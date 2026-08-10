@@ -121,5 +121,13 @@ test('hybrid watchdog detects service failures that ICMP alone cannot see', () =
     backend,
     /WAN_HEALTH_KIND="partial"[\s\S]*?WAN_HEALTH_DETAIL="ICMP works, but Internet service probes failed/,
   );
+  assert.match(
+    backend,
+    /WAN_HEALTH_KIND="complete"[\s\S]*?WAN_HEALTH_REASON="physical_link_down"/,
+  );
+  assert.match(
+    backend,
+    /WAN_HEALTH_KIND="complete"[\s\S]*?WAN_HEALTH_REASON="internet_unreachable"/,
+  );
   assert.match(backend, /record_wan_event "outage"[\s\S]*?"\$failed_kind" "\$failed_reason" "\$failed_detail"/);
 });

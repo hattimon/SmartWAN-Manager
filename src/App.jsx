@@ -2796,6 +2796,12 @@ function outageReasonText(reason, t) {
   return String(reason || t('unknown')).replaceAll('_', ' ');
 }
 
+function outageKindText(kind, t) {
+  if (kind === 'partial') return t('outageKindPartial');
+  if (kind === 'complete') return t('outageKindComplete');
+  return t('outageKindUnknown');
+}
+
 function outageDiagnosticText(event = {}, t) {
   const reason = outageReasonText(event.failureReason, t);
   return t('routerOutageDiagnostic')
@@ -3102,7 +3108,7 @@ function LoginCatMascot({
       .replace('{reason}', outageReasonText(failureReason || 'all_wans_unreachable', t))
     : failedWanNames.length === 1 && outageKind
       ? t('aurelkaFailoverNotice')
-      .replace('{kind}', t(outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'))
+      .replace('{kind}', outageKindText(outageKind, t))
       .replace('{wan}', failedWanNames[0])
       .replace('{reason}', outageReasonText(failureReason, t))
       .replace('{active}', activeWanLabel || copy.statusChecking)
@@ -3802,7 +3808,7 @@ function LoginPanel({
       ? t('loginFailoverNotice')
       .replace(
         '{kind}',
-        t(routingStatus.outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'),
+        outageKindText(routingStatus.outageKind, t),
       )
       .replace('{wan}', failedPublicWan.operator || failedPublicWan.label || failedPublicWan.id.toUpperCase())
       .replace('{reason}', outageReasonText(routingStatus.failureReason, t))
@@ -4150,7 +4156,7 @@ function DashboardPanel({
       ? t('loginFailoverNotice')
       .replace(
         '{kind}',
-        t(status.watchdog_state_failure_kind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'),
+        outageKindText(status.watchdog_state_failure_kind, t),
       )
       .replace('{wan}', `${failedWanName} (${failedWanId.toUpperCase()})`)
       .replace('{reason}', outageReasonText(status.watchdog_state_failure_reason, t))
@@ -5735,7 +5741,7 @@ function SmartWanPanel({
               <dl>
                 <div><dt>{t('lastProbe')}</dt><dd>{probe.lastChecked}</dd></div>
                 <div><dt>{t('lastSuccessfulProbe')}</dt><dd>{probe.lastSuccess}</dd></div>
-                {probe.outageKind !== 'none' ? <div><dt>{t('failureType')}</dt><dd>{t(probe.outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete')}</dd></div> : null}
+                {probe.outageKind !== 'none' ? <div><dt>{t('failureType')}</dt><dd>{outageKindText(probe.outageKind, t)}</dd></div> : null}
                 {probe.failureReason !== 'none' ? <div><dt>{t('diagnosis')}</dt><dd>{outageReasonText(probe.failureReason, t)}</dd></div> : null}
                 <div><dt>{t('serviceProbe')}</dt><dd>{probe.serviceResult}</dd></div>
               </dl>
