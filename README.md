@@ -241,6 +241,42 @@ The installer uploads:
 
 Existing hook content outside `# SMARTWAN MANAGED BEGIN` / `# SMARTWAN MANAGED END` is preserved.
 
+### Proposed WAN settings
+
+The following screenshot shows a practical baseline for a DHCP-based WAN using public DNS resolvers. Open **WAN → Internet Connection**, select the required WAN index and configure each Internet link separately.
+
+[![Proposed ASUS WAN settings in English](docs/recommended-wan-settings-en.png)](docs/recommended-wan-settings-en.png)
+
+Recommended baseline:
+
+- keep **WAN** and **NAT** enabled;
+- use **Automatic IP** only when the ISP provides the address through DHCP—retain the ISP-required PPPoE, static-IP or VLAN configuration where applicable;
+- set **Connect to DNS Server automatically** to **No**, with `1.1.1.1` as DNS Server 1 and `8.8.8.8` as DNS Server 2;
+- keep **Forward local domain queries to upstream DNS** set to **No** when public resolvers are used;
+- enable **DNS Rebind protection** and **DNSSEC support**, while leaving **Validate unsigned DNSSEC replies** disabled;
+- **Prevent client auto DoH: Yes** and **DNS Privacy Protocol: None** match the illustrated baseline. Change these only when intentionally deploying another encrypted-DNS policy;
+- UPnP is shown enabled for applications that require automatic port mappings. It is optional—disable UPnP when it is not needed, or at minimum retain secure UPnP mode and restrict its allowed ranges.
+
+The WAN type (`WAN`, `Ethernet LAN`, USB or another supported port) must match the physical Dual WAN layout. These DNS settings do not replace SmartWAN policy routing and do not guarantee session compatibility when related services are deliberately split between different public WAN addresses.
+
+### Proposed Dual WAN settings
+
+The screenshot below presents an example of ASUS Dual WAN working in **Load Balance** mode together with source-based routing rules managed by SmartWAN.
+
+[![Proposed ASUS Dual WAN settings in English](docs/recommended-dual-wan-settings-en.png)](docs/recommended-dual-wan-settings-en.png)
+
+Recommended approach:
+
+- enable **Dual WAN** and map **Primary WAN** and **Secondary WAN** to the ports actually used by the two modems or upstream routers;
+- select **Load Balance** when both links should carry traffic simultaneously. Select native **Failover** instead when the secondary link should remain a standby connection;
+- treat the illustrated `1:9` ratio as an installation-specific example, not a universal default. Set the ratio according to measured link capacity, stability and the traffic distribution you want;
+- enable ASUS routing rules only when devices or subnets need an explicit preferred WAN;
+- a complete all-IPv4 source assignment uses two complementary destination entries: `1.0.0.0/1` and `128.0.0.0/1`. Both entries must use the same source and WAN—never copy only half of the pair;
+- the private source addresses shown in the table are examples from a local installation. Replace them with the addresses/subnets in your own LAN or VPN configuration, preferably through the SmartWAN visual rule editor;
+- let SmartWAN install and maintain managed rules. Avoid editing the ASUS list at the same time as the panel is applying a preset, failover override or temporary location-routing layer.
+
+Static preferred-WAN rules do not replace connection health monitoring. SmartWAN can temporarily override them during an outage only when the relevant failover behaviour is enabled.
+
 ### Storage model
 
 On the router:
@@ -499,6 +535,42 @@ Następnie skonfiguruj i autoryzuj urządzenie w zakładce VPN. Nie używaj nak�
 6. Sprawdź konflikty i podgląd zmian, zastosuj ustawienia, a następnie zweryfikuj oba WAN-y, watchdog i ważne trasy.
 
 Instalator zachowuje treść hooków poza blokami `# SMARTWAN MANAGED BEGIN` / `# SMARTWAN MANAGED END`.
+
+### Proponowane ustawienia WAN
+
+Poniższy zrzut przedstawia praktyczną konfigurację bazową dla łącza WAN korzystającego z DHCP i publicznych serwerów DNS. Otwórz **WAN → Połączenie internetowe**, wybierz właściwy indeks WAN i skonfiguruj każde łącze internetowe oddzielnie.
+
+[![Proponowane ustawienia WAN ASUS po polsku](docs/proponowane-ustawienia-wan-pl.png)](docs/proponowane-ustawienia-wan-pl.png)
+
+Proponowana konfiguracja bazowa:
+
+- pozostaw włączone **WAN** i **NAT**;
+- używaj **Automatycznego IP** tylko wtedy, gdy operator przydziela adres przez DHCP—zachowaj wymagane przez operatora PPPoE, adres statyczny lub konfigurację VLAN;
+- ustaw **Połącz z serwerem DNS automatycznie** na **Nie**, DNS Server 1 na `1.1.1.1`, a DNS Server 2 na `8.8.8.8`;
+- przy publicznych serwerach DNS pozostaw **Forward local domain queries to upstream DNS** na **Nie**;
+- włącz **DNS Rebind protection** i **DNSSEC support**, natomiast **Validate unsigned DNSSEC replies** pozostaw wyłączone;
+- **Prevent client auto DoH: Yes** oraz **DNS Privacy Protocol: None** odpowiadają konfiguracji ze zrzutu. Zmieniaj je tylko przy świadomym wdrożeniu innej polityki szyfrowanego DNS;
+- na zrzucie UPnP jest włączone z myślą o aplikacjach wymagających automatycznego mapowania portów. Jest opcjonalne—wyłącz UPnP, jeżeli nie jest potrzebne, albo co najmniej pozostaw tryb bezpieczny i ogranicz dozwolone zakresy.
+
+Typ WAN (`WAN`, `Ethernet LAN`, USB albo inny obsługiwany port) musi odpowiadać fizycznemu układowi Dual WAN. Te ustawienia DNS nie zastępują routingu polityk SmartWAN i nie gwarantują zgodności sesji, jeśli powiązane usługi są celowo rozdzielane między dwa różne publiczne adresy WAN.
+
+### Proponowane ustawienia Dual WAN
+
+Poniższy zrzut przedstawia przykładową konfigurację ASUS Dual WAN w trybie **Balans ładowania** wraz z regułami routingu według źródła zarządzanymi przez SmartWAN.
+
+[![Proponowane ustawienia ASUS Dual WAN po polsku](docs/proponowane-ustawienia-dual-wan-pl.png)](docs/proponowane-ustawienia-dual-wan-pl.png)
+
+Proponowany sposób konfiguracji:
+
+- włącz **Dual WAN** i przypisz **Główną sieć WAN** oraz **Pomocniczą sieć WAN** do portów rzeczywiście używanych przez oba modemy lub routery operatorów;
+- wybierz **Balans ładowania**, jeżeli oba łącza mają jednocześnie przenosić ruch. Wybierz natywny tryb **Przełączanie awaryjne**, jeżeli łącze pomocnicze ma pozostawać w rezerwie;
+- traktuj widoczną proporcję `1:9` jako przykład właściwy dla konkretnej instalacji, a nie uniwersalną wartość domyślną. Dopasuj ją do zmierzonej przepustowości, stabilności łączy i oczekiwanego podziału ruchu;
+- włącz zasady routingu ASUS tylko wtedy, gdy określone urządzenia lub podsieci wymagają preferowanego WAN-u;
+- pełne przypisanie całego ruchu IPv4 danego źródła składa się z dwóch uzupełniających wpisów docelowych: `1.0.0.0/1` oraz `128.0.0.0/1`. Oba wpisy muszą mieć to samo źródło i WAN—nie kopiuj tylko jednej części pary;
+- prywatne adresy źródłowe widoczne w tabeli są przykładem z lokalnej instalacji. Zastąp je adresami i podsieciami własnego LAN-u lub VPN, najlepiej przez wizualny edytor reguł SmartWAN;
+- pozwól SmartWAN instalować i utrzymywać reguły zarządzane. Nie edytuj równocześnie listy ASUS, gdy panel stosuje preset, awaryjne nadpisanie tras albo tymczasową warstwę routingu lokalizacji.
+
+Statyczne reguły preferowanego WAN-u nie zastępują monitoringu stanu łączy. SmartWAN może je tymczasowo nadpisać podczas awarii tylko wtedy, gdy odpowiednie zachowanie failover jest włączone.
 
 ### Dane i utrzymanie
 
