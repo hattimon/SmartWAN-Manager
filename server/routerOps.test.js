@@ -57,3 +57,37 @@ test('watchdog recovery keeps the recovering WAN visible as online', () => {
 
   assert.deepEqual(reconciled, wanStatus);
 });
+
+test('classified health probes expose simultaneous WAN failures even without an override route', () => {
+  const reconciled = reconcileWanHealthWithWatchdog(
+    [
+      { id: 'wan0', internetStatus: 'ok' },
+      { id: 'wan1', internetStatus: 'ok' },
+    ],
+    {
+      enabled: '1',
+      watchdog_enabled: '1',
+      wan0_health_result: 'complete_failure',
+      wan1_health_result: 'partial_failure',
+      failover_override_active: '0',
+    },
+  );
+
+  assert.equal(reconciled[0].internetStatus, 'failed');
+  assert.equal(reconciled[1].internetStatus, 'failed');
+  assert.equal(reconciled[0].internetSource, 'watchdog-health');
+  assert.equal(reconciled[1].internetSource, 'watchdog-health');
+});
+
+test('a partial failure remains diagnostic-only when full-WAN partial failover is disabled', () => {
+  const wanStatus = [{ id: 'wan0', internetStatus: 'ok' }];
+  const reconciled = reconcileWanHealthWithWatchdog(wanStatus, {
+    enabled: '1',
+    watchdog_enabled: '1',
+    watchdog_partial_failover_enabled: '0',
+    wan0_health_result: 'partial_failure',
+    failover_override_active: '0',
+  });
+
+  assert.deepEqual(reconciled, wanStatus);
+});

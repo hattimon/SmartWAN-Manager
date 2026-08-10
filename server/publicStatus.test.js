@@ -159,6 +159,28 @@ test('applies a new outage event immediately to a cached healthy router state', 
   assert.equal(routing.failoverActive, true);
   assert.equal(routing.wanStatus[1].online, false);
   assert.equal(routing.activeWan, 'wan0');
+  assert.equal(routing.outageKind, '');
+});
+
+test('publishes partial-failure diagnostics for the login panel and Aurelka', () => {
+  const failoverState = {
+    ...state,
+    status: {
+      ...state.status,
+      failover_override_active: '1',
+      active_default_wan: 'wan0',
+      watchdog_state_failed_wan: 'wan1',
+      watchdog_state_last_switch_reason: 'wan1_failed_wan0_ok',
+      watchdog_state_failure_kind: 'partial',
+      watchdog_state_failure_reason: 'https_timeout',
+      watchdog_state_failure_detail: 'ICMP works, HTTPS probes timed out',
+    },
+  };
+
+  const routing = buildRoutingSummary(failoverState);
+  assert.equal(routing.outageKind, 'partial');
+  assert.equal(routing.failureReason, 'https_timeout');
+  assert.match(routing.failureDetail, /HTTPS/);
 });
 
 test('does not claim traffic uses a WAN when both connections are down', () => {
@@ -183,5 +205,6 @@ test('does not claim traffic uses a WAN when both connections are down', () => {
   assert.equal(viewer.assignedWan, '');
   assert.equal(viewer.assignedWanLabel, '');
   assert.equal(routing.activeWan, '');
+  assert.equal(routing.allWansDown, true);
   assert.equal(routing.wanStatus.every((wan) => !wan.online), true);
 });

@@ -1225,7 +1225,7 @@ export default function DualWanServiceRouting({
                 const lastKnown = locationPolicy.lastKnownLocations?.[wanId];
                 const location = currentProbe?.ok ? currentProbe : lastKnown;
                 return (
-                  <div className={currentProbe?.ok === false ? 'warn' : 'ok'} key={wanId}>
+                  <div className={currentProbe?.ok === false || currentProbe?.reusedLastKnown ? 'warn' : 'ok'} key={wanId}>
                     <span>{wanId === 'wan0' ? primaryLabel : secondaryLabel}</span>
                     <strong>
                       {location
@@ -1233,7 +1233,9 @@ export default function DualWanServiceRouting({
                         : t('googleLocationCheckFailed')}
                     </strong>
                     <small>
-                      {currentProbe?.ok === false
+                      {currentProbe?.reusedLastKnown
+                        ? t('googleLocationApiLimitLastConfirmed')
+                        : currentProbe?.ok === false
                         ? `${t('googleLocationLastKnown')}: ${currentProbe.error}`
                         : location
                           ? t('googleLocationDetectedAt').replace(

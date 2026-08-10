@@ -140,12 +140,34 @@ function failedWanFromWatchdog(status = {}) {
 }
 
 export function reconcileWanHealthWithWatchdog(wanStatus = [], status = {}) {
-  if (status.failover_override_active !== '1') return wanStatus;
+  const failingHealthResults = new Set([
+    'partial_failure',
+    'complete_failure',
+    'link_down',
+    'internet_failed',
+    'test_forced_down',
+  ]);
+  const watchdogHealthActive = status.enabled === '1' && status.watchdog_enabled === '1';
+  const partialFailoverEnabled = status.watchdog_partial_failover_enabled !== '0';
+  const healthReconciled = wanStatus.map((wan) => {
+    const healthResult = String(status[`${wan.id}_health_result`] || '').toLowerCase();
+    if (!watchdogHealthActive || !failingHealthResults.has(healthResult)) return wan;
+    if (healthResult === 'partial_failure' && !partialFailoverEnabled) return wan;
+    return {
+      ...wan,
+      internetStatus: 'failed',
+      internetTarget: wan.internetTarget || 'watchdog',
+      internetSource: 'watchdog-health',
+      watchdogOverride: true,
+    };
+  });
+
+  if (status.failover_override_active !== '1') return healthReconciled;
   const failedWan = failedWanFromWatchdog(status);
   const recoveryPending = status.watchdog_state_last_switch_reason === 'all_wans_recovering';
-  if (!failedWan || recoveryPending) return wanStatus;
+  if (!failedWan || recoveryPending) return healthReconciled;
 
-  return wanStatus.map((wan) => (
+  return healthReconciled.map((wan) => (
     wan.id === failedWan
       ? {
           ...wan,

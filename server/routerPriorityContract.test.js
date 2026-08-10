@@ -113,3 +113,13 @@ test('temporary location exceptions never replace the emergency failover rule', 
     /delete_priority_exact "\$SMARTWAN_PRIORITY_ASUS_EXCEPTION"/,
   );
 });
+
+test('hybrid watchdog detects service failures that ICMP alone cannot see', () => {
+  assert.match(backend, /watchdog_service_enabled="\$\{watchdog_service_enabled:-1\}"/);
+  assert.match(backend, /curl[\s\S]*?--interface "\$swp_source_ip"[\s\S]*?--max-time "\$swp_timeout"/);
+  assert.match(
+    backend,
+    /WAN_HEALTH_KIND="partial"[\s\S]*?WAN_HEALTH_DETAIL="ICMP works, but Internet service probes failed/,
+  );
+  assert.match(backend, /record_wan_event "outage"[\s\S]*?"\$failed_kind" "\$failed_reason" "\$failed_detail"/);
+});

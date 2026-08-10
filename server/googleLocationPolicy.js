@@ -51,6 +51,10 @@ function normalizeCountryCode(value) {
   return /^[A-Z]{2}$/.test(code) ? code : '';
 }
 
+function normalizeStoredText(value, fallback = '') {
+  return String(value ?? fallback).replace(/[\r\n]/g, ' ').trim();
+}
+
 function isValidIpv4Source(value) {
   const [address, prefixText] = String(value || '').trim().split('/');
   const octets = address.split('.');
@@ -76,7 +80,7 @@ function normalizeSources(input = {}, current = defaults) {
   return sources.length ? sources : [defaults.source];
 }
 
-function normalizePolicy(input = {}, current = defaults) {
+export function normalizePolicy(input = {}, current = defaults) {
   const interval = Number(input.intervalMinutes ?? current.intervalMinutes);
   const sources = normalizeSources(input, current);
   const preferredCountryCode = normalizeCountryCode(
@@ -120,6 +124,22 @@ function normalizePolicy(input = {}, current = defaults) {
       ? current.temporaryRoutingActive === true
       : input.temporaryRoutingActive === true,
     apiKey: String(input.apiKey ?? current.apiKey ?? '').trim(),
+    lastCheckAt: normalizeStoredText(input.lastCheckAt ?? current.lastCheckAt),
+    nextCheckAt: normalizeStoredText(input.nextCheckAt ?? current.nextCheckAt),
+    lastAppliedWan: ['wan0', 'wan1'].includes(input.lastAppliedWan ?? current.lastAppliedWan)
+      ? (input.lastAppliedWan ?? current.lastAppliedWan)
+      : '',
+    lastAutomaticSwitchAt: normalizeStoredText(
+      input.lastAutomaticSwitchAt ?? current.lastAutomaticSwitchAt,
+    ),
+    lastOutcomeSignature: String(
+      input.lastOutcomeSignature ?? current.lastOutcomeSignature ?? '',
+    ),
+    lastResult: input.lastResult && typeof input.lastResult === 'object'
+      ? input.lastResult
+      : current.lastResult && typeof current.lastResult === 'object'
+        ? current.lastResult
+        : null,
     lastKnownLocations: {
       ...defaults.lastKnownLocations,
       ...(current.lastKnownLocations || {}),
@@ -191,8 +211,8 @@ export async function saveGoogleLocationPolicy(input = {}) {
 
 async function routerFetch(settings, ifname, url, { method = 'GET', body = '' } = {}) {
   const request = method === 'POST'
-    ? `"$CURL_BIN" --silent --show-error --fail --max-time 15 --interface ${shellQuote(ifname)} -H 'Content-Type: application/json' --data ${shellQuote(body)} ${shellQuote(url)}`
-    : `"$CURL_BIN" --silent --show-error --fail --max-time 15 --interface ${shellQuote(ifname)} ${shellQuote(url)}`;
+    ? `"$CURL_BIN" --silent --show-error --max-time 15 --interface ${shellQuote(ifname)} -H 'Content-Type: application/json' --data ${shellQuote(body)} --write-out '\n__SMARTWAN_HTTP_STATUS__:%{http_code}' ${shellQuote(url)}`
+    : `"$CURL_BIN" --silent --show-error --max-time 15 --interface ${shellQuote(ifname)} --write-out '\n__SMARTWAN_HTTP_STATUS__:%{http_code}' ${shellQuote(url)}`;
   const script = `
 PATH=$PATH:/opt/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CURL_BIN="$(which curl 2>/dev/null)"
@@ -201,13 +221,49 @@ ${request}
 `;
   const result = await execCommand(settings, 'sh -s', { timeoutMs: 22000, stdin: script });
   if (result.code !== 0) {
-    throw new Error(result.stderr.trim() || `Google location request failed through ${ifname}.`);
+    const error = new Error(result.stderr.trim() || `Google location request failed through ${ifname}.`);
+    error.category = 'transport';
+    throw error;
   }
+  const statusMarker = '\n__SMARTWAN_HTTP_STATUS__:';
+  const markerIndex = result.stdout.lastIndexOf(statusMarker);
+  const responseBody = markerIndex >= 0 ? result.stdout.slice(0, markerIndex) : result.stdout;
+  const httpStatus = markerIndex >= 0
+    ? Number(result.stdout.slice(markerIndex + statusMarker.length).trim())
+    : 0;
   try {
-    return JSON.parse(result.stdout);
+    const parsed = JSON.parse(responseBody);
+    if (httpStatus >= 400) {
+      const apiReason = (parsed?.error?.errors || [])
+        .map((item) => item?.reason || '')
+        .filter(Boolean)
+        .join(' ');
+      const error = new Error(
+        parsed?.error?.message || `Google API returned HTTP ${httpStatus} through ${ifname}.`,
+      );
+      error.category = httpStatus === 429
+        || /quota|rate.?limit|daily.?limit|limit exceeded|resource.?exhausted/i.test(`${error.message} ${apiReason}`)
+        ? 'api_quota'
+        : 'api_error';
+      error.httpStatus = httpStatus;
+      throw error;
+    }
+    return parsed;
   } catch (_error) {
+    if (_error?.category) throw _error;
     throw new Error(`Google location response through ${ifname} was not valid JSON.`);
   }
+}
+
+function googleApiResultError(payload = {}, fallback) {
+  const status = String(payload?.status || '').toUpperCase();
+  const message = String(payload?.error_message || fallback || '').trim();
+  const error = new Error(message || `Google API status: ${status || 'unknown'}.`);
+  error.category = status === 'OVER_QUERY_LIMIT'
+    || /quota|rate.?limit|daily.?limit|limit exceeded|resource.?exhausted/i.test(message)
+    ? 'api_quota'
+    : 'api_error';
+  return error;
 }
 
 export function parseGoogleReverseGeocode(geocode = {}) {
@@ -243,6 +299,9 @@ async function probeWanCountry(settings, apiKey, wan) {
       `https://www.googleapis.com/geolocation/v1/geolocate?key=${encodeURIComponent(apiKey)}`,
       { method: 'POST', body: '{"considerIp":true}' },
     );
+    if (geolocation?.error || geolocation?.status === 'OVER_QUERY_LIMIT') {
+      throw googleApiResultError(geolocation, 'Google Geolocation API rejected the request.');
+    }
     const lat = Number(geolocation?.location?.lat);
     const lng = Number(geolocation?.location?.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -253,6 +312,9 @@ async function probeWanCountry(settings, apiKey, wan) {
       wan.ifname,
       `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${encodeURIComponent(apiKey)}`,
     );
+    if (geocode?.status && geocode.status !== 'OK') {
+      throw googleApiResultError(geocode, `Google geocoding status: ${geocode.status}.`);
+    }
     const location = parseGoogleReverseGeocode(geocode);
     const countryCode = location.countryCode;
     if (!countryCode) {
@@ -269,7 +331,12 @@ async function probeWanCountry(settings, apiKey, wan) {
       accuracyMeters: Number(geolocation?.accuracy || 0),
     };
   } catch (error) {
-    return { ...wan, ok: false, error: error.message };
+    return {
+      ...wan,
+      ok: false,
+      error: error.message,
+      errorCategory: error.category || 'transport',
+    };
   }
 }
 
@@ -296,12 +363,14 @@ export function googleRoutingMatches(rules, sources, targetWan) {
 
 export function googleRoutingAction({
   enabled,
+  measurementComplete = true,
   allWansMatchExpectedCountry,
   temporaryRoutingActive,
   routingMatchesTarget,
   hasTargetWan,
 }) {
   if (!enabled) return 'none';
+  if (!measurementComplete) return 'none';
   if (allWansMatchExpectedCountry) {
     return temporaryRoutingActive ? 'restore' : 'none';
   }
@@ -338,6 +407,44 @@ export function chooseTargetWan(policy, probes, currentWan) {
     return { targetWan: currentWan, reason: 'current_wan_still_matches' };
   }
   return { targetWan: matching[0].id, reason: 'first_matching_wan' };
+}
+
+export function buildLocationDecisionProbes(probes = [], lastKnownLocations = {}) {
+  return probes.map((probe) => {
+    const cached = lastKnownLocations?.[probe.id];
+    if (probe.ok || probe.errorCategory !== 'api_quota' || !cached?.countryCode) return probe;
+    return {
+      ...probe,
+      ok: true,
+      countryCode: cached.countryCode,
+      countryName: cached.countryName || cached.countryCode,
+      cityName: cached.cityName || '',
+      latitude: cached.latitude,
+      longitude: cached.longitude,
+      accuracyMeters: cached.accuracyMeters,
+      reusedLastKnown: true,
+      detectedAt: cached.detectedAt || '',
+    };
+  });
+}
+
+export function buildLastConfirmedLocationProbes(probes = [], lastKnownLocations = {}) {
+  return probes.map((probe) => {
+    const cached = lastKnownLocations?.[probe.id];
+    if (probe.ok || !cached?.countryCode) return probe;
+    return {
+      ...probe,
+      ok: true,
+      countryCode: cached.countryCode,
+      countryName: cached.countryName || cached.countryCode,
+      cityName: cached.cityName || '',
+      latitude: cached.latitude,
+      longitude: cached.longitude,
+      accuracyMeters: cached.accuracyMeters,
+      reusedLastKnown: true,
+      detectedAt: cached.detectedAt || '',
+    };
+  });
 }
 
 export function automaticSwitchAllowed(lastAutomaticSwitchAt, now = Date.now()) {
@@ -506,15 +613,44 @@ export async function runGoogleLocationPolicy(settings, { force = false } = {}) 
     probes.push(await probeWanCountry(settings, policy.apiKey, wan));
   }
 
+  // A transport failure is an incomplete measurement, never evidence that a
+  // WAN is in the wrong country. Quota exhaustion reuses the last successful
+  // location for display/continuity, but cannot initiate a new routing change.
+  const decisionProbes = buildLocationDecisionProbes(probes, policy.lastKnownLocations);
+  const lastConfirmedProbes = buildLastConfirmedLocationProbes(
+    probes,
+    policy.lastKnownLocations,
+  );
+  const measurementComplete = probes.every((probe) => probe.ok);
+  const quotaFallbackActive = probes.some((probe) => (
+    probe.errorCategory === 'api_quota'
+    && decisionProbes.find((candidate) => candidate.id === probe.id)?.reusedLastKnown
+  ));
+  const incompleteTransportProbe = probes.some((probe) => (
+    !probe.ok && probe.errorCategory !== 'api_quota'
+  ));
+
   const sources = policy.sources;
   const cleanupSources = new Set([...sources, ...(policy.lastManagedSources || [])]);
   const previousWan = existingGoogleWan(current.form.rules, sources);
-  const decision = chooseTargetWan(policy, probes, previousWan);
-  const allWansMatchExpectedCountry = probes.length === 2 && probes.every((probe) => (
+  const decision = chooseTargetWan(policy, decisionProbes, previousWan);
+  const liveWansMatchExpectedCountry = decisionProbes.length === 2 && decisionProbes.every((probe) => (
     probe.ok && probe.countryCode === policy.preferredCountryCode
   ));
+  const lastConfirmedWansMatchExpectedCountry = lastConfirmedProbes.length === 2
+    && lastConfirmedProbes.every((probe) => (
+      probe.ok && probe.countryCode === policy.preferredCountryCode
+    ));
+  // Last confirmed locations may only remove an existing temporary routing
+  // layer. They can never create or move Google routes after an incomplete
+  // measurement.
+  const restoreFromLastConfirmed = policy.temporaryRoutingActive
+    && !measurementComplete
+    && lastConfirmedWansMatchExpectedCountry;
+  const allWansMatchExpectedCountry = liveWansMatchExpectedCountry || restoreFromLastConfirmed;
   const routingAction = googleRoutingAction({
     enabled: policy.enabled,
+    measurementComplete: measurementComplete || restoreFromLastConfirmed,
     allWansMatchExpectedCountry,
     temporaryRoutingActive: policy.temporaryRoutingActive,
     routingMatchesTarget: decision.targetWan
@@ -522,8 +658,18 @@ export async function runGoogleLocationPolicy(settings, { force = false } = {}) 
       : false,
     hasTargetWan: Boolean(decision.targetWan),
   });
-  let outcome = decision.targetWan ? 'location_ok' : 'no_matching_wan';
-  let reason = decision.reason;
+  let outcome = incompleteTransportProbe
+    ? 'location_check_failed'
+    : quotaFallbackActive
+      ? 'location_cached_due_to_api_limit'
+      : decision.targetWan
+        ? 'location_ok'
+        : 'no_matching_wan';
+  let reason = incompleteTransportProbe
+    ? 'wan_location_probe_failed'
+    : quotaFallbackActive
+      ? 'google_api_limit_last_known_location_used'
+      : decision.reason;
   let applied = false;
   let automaticSwitchApplied = false;
   let ruleCount = current.form.rules.length;
@@ -531,7 +677,9 @@ export async function runGoogleLocationPolicy(settings, { force = false } = {}) 
   let baselineGoogleRules = policy.baselineGoogleRules || [];
 
   if (routingAction === 'restore') {
-    reason = 'all_wans_match_expected_country';
+    reason = restoreFromLastConfirmed
+      ? 'last_confirmed_wans_match_expected_country'
+      : 'all_wans_match_expected_country';
     if (current.form.mode !== 'lb' || !current.form.routingEnabled) {
       outcome = 'routing_not_available';
     } else {
@@ -546,7 +694,7 @@ export async function runGoogleLocationPolicy(settings, { force = false } = {}) 
       applied = true;
       ruleCount = restoredRules.length;
     }
-  } else if (policy.enabled && allWansMatchExpectedCountry) {
+  } else if (policy.enabled && allWansMatchExpectedCountry && measurementComplete) {
     reason = 'all_wans_match_expected_country';
     outcome = 'location_ok';
   } else if (routingAction === 'apply') {
@@ -615,7 +763,10 @@ export async function runGoogleLocationPolicy(settings, { force = false } = {}) 
     temporaryRoutingActive,
     routingWan,
     countryChanges,
-    wans: probes,
+    // Quota exhaustion keeps the last confirmed location authoritative until
+    // Google accepts another request. Transport/API failures remain explicit
+    // failures and therefore cannot be mistaken for a country mismatch.
+    wans: decisionProbes,
   };
   const signature = googleLocationEventSignature(result);
   if (shouldRecordGoogleLocationEvent({

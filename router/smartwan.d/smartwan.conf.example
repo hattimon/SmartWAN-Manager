@@ -49,6 +49,17 @@ watchdog_targets='1.1.1.1;9.9.9.9;208.67.222.222'
 watchdog_interval=1
 watchdog_fail_count=2
 watchdog_recover_count=3
+# Hybrid checks catch partial outages where ICMP still works but DNS, TCP,
+# TLS or HTTP(S) is unavailable. A majority of independent expected-response
+# endpoints must succeed. Checks are cached for the configured interval.
+watchdog_service_enabled=1
+# By default a confirmed partial failure also moves all traffic to the healthy
+# WAN. Set to 0 to keep only the diagnosis and use service/domain rules without
+# triggering full-WAN failover. Complete outages always trigger failover.
+watchdog_partial_failover_enabled=1
+watchdog_service_targets='https://connectivitycheck.gstatic.com/generate_204|204;https://www.cloudflare.com/cdn-cgi/trace|200;https://1.1.1.1/cdn-cgi/trace|200'
+watchdog_service_interval=5
+watchdog_service_timeout=2
 
 # Persistent OpenVPN policy. Merlin hooks reapply these managed chains after
 # firewall, NAT, WAN and service events without changing the OpenVPN NVRAM.

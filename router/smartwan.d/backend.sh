@@ -91,13 +91,17 @@ record_wan_event() {
   event_reason="$3"
   event_active="$4"
   event_failures="${5:-0}"
+  event_outage_kind="${6:-none}"
+  event_failure_reason="${7:-none}"
+  event_failure_detail="$(sanitize_probe_value "${8:-}")"
   event_epoch="$(date '+%s' 2>/dev/null || echo 0)"
   event_time="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)"
   event_id="${event_epoch}-${event_type}-${event_wan}"
   mkdir -p "$(dirname "$SMARTWAN_EVENT_JOURNAL")" 2>/dev/null
-  if printf '1|%s|%s|%s|%s|%s|%s|%s|%s|%s\n' \
+  if printf '2|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n' \
     "$event_id" "$event_epoch" "$event_time" "$event_type" "$event_wan" \
     "$event_reason" "$event_active" "$event_failures" "${state_mode:-}" \
+    "$event_outage_kind" "$event_failure_reason" "$event_failure_detail" \
     >> "$SMARTWAN_EVENT_JOURNAL"; then
     log_msg "WAN event journal appended type=$event_type wan=$event_wan active=$event_active id=$event_id"
   else
@@ -333,6 +337,11 @@ load_config() {
   rules_services=""
   watchdog_enabled=""
   watchdog_targets=""
+  watchdog_service_enabled=""
+  watchdog_partial_failover_enabled=""
+  watchdog_service_targets=""
+  watchdog_service_interval=""
+  watchdog_service_timeout=""
   watchdog_interval=""
   watchdog_fail_count=""
   watchdog_recover_count=""
@@ -406,6 +415,11 @@ load_config() {
         rules_services) rules_services="$value" ;;
         watchdog_enabled) watchdog_enabled="$value" ;;
         watchdog_targets) watchdog_targets="$value" ;;
+        watchdog_service_enabled) watchdog_service_enabled="$value" ;;
+        watchdog_partial_failover_enabled) watchdog_partial_failover_enabled="$value" ;;
+        watchdog_service_targets) watchdog_service_targets="$value" ;;
+        watchdog_service_interval) watchdog_service_interval="$value" ;;
+        watchdog_service_timeout) watchdog_service_timeout="$value" ;;
         watchdog_interval) watchdog_interval="$value" ;;
         watchdog_fail_count) watchdog_fail_count="$value" ;;
         watchdog_recover_count) watchdog_recover_count="$value" ;;
@@ -467,6 +481,14 @@ load_config() {
   watchdog_interval="${watchdog_interval:-1}"
   watchdog_fail_count="${watchdog_fail_count:-2}"
   watchdog_recover_count="${watchdog_recover_count:-3}"
+  # ICMP alone can stay healthy while TCP, TLS, HTTP or DNS is unusable. The
+  # hybrid probe is enabled by default for existing configurations as well as
+  # new installations, but can be disabled explicitly if required.
+  watchdog_service_enabled="${watchdog_service_enabled:-1}"
+  watchdog_partial_failover_enabled="${watchdog_partial_failover_enabled:-1}"
+  watchdog_service_targets="${watchdog_service_targets:-https://connectivitycheck.gstatic.com/generate_204|204;https://www.cloudflare.com/cdn-cgi/trace|200;https://1.1.1.1/cdn-cgi/trace|200}"
+  watchdog_service_interval="${watchdog_service_interval:-5}"
+  watchdog_service_timeout="${watchdog_service_timeout:-2}"
   vpn_management_enabled="${vpn_management_enabled:-0}"
   vpn_interface="${vpn_interface:-tun21}"
   vpn_subnet="${vpn_subnet:-10.8.0.0/24}"
@@ -1361,7 +1383,6 @@ probe_target_via_wan() {
 
   if [ "$test_mode" = "1" ]; then
     if [ "$(canonical_wan "${SMARTWAN_TEST_DOWN_WAN:-}")" = "$(canonical_wan "$wan")" ]; then
-      save_wan_probe_state "$wan" 0 1 1 "test_forced_down"
       return 1
     fi
     log_msg "test mode: health probe wan=$wan source=$source_ip target=$target_ip table=$table dev=$ifname gateway=${gateway:-direct}"
@@ -1401,6 +1422,12 @@ save_wan_probe_state() {
   attempts="$3"
   required="$4"
   result="$5"
+  outage_kind="${6:-none}"
+  failure_reason="${7:-none}"
+  failure_detail="${8:-}"
+  service_result="${9:-not_checked}"
+  service_reason="${10:-none}"
+  service_detail="${11:-}"
   state_file="$SMARTWAN_RUNTIME_DIR/smartwan-health-$wan.state"
   last_success=""
   [ -f "$state_file" ] && last_success="$(sed -n 's/^last_success=//p' "$state_file" 2>/dev/null | head -n 1)"
@@ -1413,14 +1440,205 @@ save_wan_probe_state() {
     echo "required=$required"
     echo "last_checked=$now"
     echo "last_success=$last_success"
+    echo "outage_kind=$outage_kind"
+    echo "failure_reason=$failure_reason"
+    echo "failure_detail=$failure_detail"
+    echo "service_result=$service_result"
+    echo "service_reason=$service_reason"
+    echo "service_detail=$service_detail"
   } > "$state_file"
+}
+
+sanitize_probe_value() {
+  printf '%s' "$1" | tr '\r\n|' '   ' | cut -c1-360
+}
+
+service_failure_reason_for_exit() {
+  case "$1" in
+    6) echo "dns_resolution_failed" ;;
+    7) echo "tcp_connect_failed" ;;
+    28) echo "https_timeout" ;;
+    35|51|58|59|60) echo "tls_handshake_failed" ;;
+    22) echo "http_service_error" ;;
+    *) echo "service_transport_failed" ;;
+  esac
+}
+
+load_cached_service_probe() {
+  swc_wan="$1"
+  swc_state="$SMARTWAN_RUNTIME_DIR/smartwan-service-$swc_wan.state"
+  [ -f "$swc_state" ] || return 1
+  SERVICE_PROBE_EPOCH="$(sed -n 's/^epoch=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_RESULT="$(sed -n 's/^result=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_REASON="$(sed -n 's/^reason=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_DETAIL="$(sed -n 's/^detail=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_SUCCESSES="$(sed -n 's/^successes=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_ATTEMPTS="$(sed -n 's/^attempts=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  SERVICE_PROBE_REQUIRED="$(sed -n 's/^required=//p' "$swc_state" 2>/dev/null | head -n 1)"
+  [ -n "$SERVICE_PROBE_RESULT" ]
+}
+
+save_service_probe() {
+  sws_wan="$1"
+  sws_result="$2"
+  sws_reason="$3"
+  sws_detail="$(sanitize_probe_value "$4")"
+  sws_successes="$5"
+  sws_attempts="$6"
+  sws_required="$7"
+  sws_epoch="$(date '+%s' 2>/dev/null || echo 0)"
+  {
+    echo "epoch=$sws_epoch"
+    echo "result=$sws_result"
+    echo "reason=$sws_reason"
+    echo "detail=$sws_detail"
+    echo "successes=$sws_successes"
+    echo "attempts=$sws_attempts"
+    echo "required=$sws_required"
+  } > "$SMARTWAN_RUNTIME_DIR/smartwan-service-$sws_wan.state"
+  SERVICE_PROBE_EPOCH="$sws_epoch"
+  SERVICE_PROBE_RESULT="$sws_result"
+  SERVICE_PROBE_REASON="$sws_reason"
+  SERVICE_PROBE_DETAIL="$sws_detail"
+  SERVICE_PROBE_SUCCESSES="$sws_successes"
+  SERVICE_PROBE_ATTEMPTS="$sws_attempts"
+  SERVICE_PROBE_REQUIRED="$sws_required"
+}
+
+probe_services_via_wan() {
+  swp_wan="$1"
+  swp_force="${2:-0}"
+  swp_now="$(date '+%s' 2>/dev/null || echo 0)"
+  swp_interval="$(watchdog_limit "$watchdog_service_interval" 5)"
+  if [ "$swp_force" != "1" ] && load_cached_service_probe "$swp_wan"; then
+    case "$SERVICE_PROBE_EPOCH" in ""|*[!0-9]*) SERVICE_PROBE_EPOCH=0 ;; esac
+    if [ $((swp_now - SERVICE_PROBE_EPOCH)) -lt "$swp_interval" ] 2>/dev/null; then
+      [ "$SERVICE_PROBE_RESULT" = "ok" ]
+      return $?
+    fi
+  fi
+
+  swp_ifname="$(ifname_for_wan "$swp_wan")"
+  swp_gateway="$(gateway_for_wan "$swp_wan")"
+  swp_source_ip="$(wan_source_ip "$swp_wan")"
+  case "$(canonical_wan "$swp_wan")" in
+    wan0) swp_table="$SMARTWAN_HEALTH_TABLE_WAN0" ;;
+    wan1) swp_table="$SMARTWAN_HEALTH_TABLE_WAN1" ;;
+    *) swp_table="" ;;
+  esac
+  if [ -z "$swp_ifname" ] || [ -z "$swp_table" ] || [ -z "$swp_source_ip" ]; then
+    save_service_probe "$swp_wan" "failed" "wan_route_unavailable" "WAN interface, source address or routing table was not detected" 0 0 1
+    return 1
+  fi
+
+  swp_targets="$watchdog_service_targets"
+  swp_total=0
+  swp_old_ifs="$IFS"
+  IFS=';'
+  for swp_spec in $swp_targets; do
+    [ -n "$swp_spec" ] && swp_total=$((swp_total + 1))
+  done
+  IFS="$swp_old_ifs"
+  [ "$swp_total" -gt 0 ] || {
+    save_service_probe "$swp_wan" "failed" "service_targets_missing" "No HTTPS service probes are configured" 0 0 1
+    return 1
+  }
+  swp_required=$((swp_total / 2 + 1))
+
+  if [ "$test_mode" = "1" ]; then
+    if [ "$(canonical_wan "${SMARTWAN_TEST_DOWN_WAN:-}")" = "$(canonical_wan "$swp_wan")" ]; then
+      save_service_probe "$swp_wan" "failed" "internet_unreachable" "Test mode forced a complete WAN failure" 0 1 "$swp_required"
+      return 1
+    fi
+    if [ "$(canonical_wan "${SMARTWAN_TEST_PARTIAL_WAN:-}")" = "$(canonical_wan "$swp_wan")" ]; then
+      save_service_probe "$swp_wan" "failed" "https_timeout" "Test mode: ICMP works but HTTPS/TCP timed out" 0 "$swp_total" "$swp_required"
+      return 1
+    fi
+    save_service_probe "$swp_wan" "ok" "none" "Hybrid ICMP and HTTPS service probes succeeded in test mode" "$swp_required" "$swp_required" "$swp_required"
+    return 0
+  fi
+
+  delete_priority_exact "$SMARTWAN_PRIORITY_HEALTH"
+  ip route flush table "$swp_table" 2>/dev/null || true
+  copy_connected_routes_to_table "$swp_table"
+  if [ -n "$swp_gateway" ]; then
+    ip route replace default via "$swp_gateway" dev "$swp_ifname" table "$swp_table" 2>/dev/null || {
+      save_service_probe "$swp_wan" "failed" "wan_route_unavailable" "Could not install the temporary WAN service-probe route" 0 0 "$swp_required"
+      return 1
+    }
+  else
+    ip route replace default dev "$swp_ifname" table "$swp_table" 2>/dev/null || {
+      save_service_probe "$swp_wan" "failed" "wan_route_unavailable" "Could not install the temporary WAN service-probe route" 0 0 "$swp_required"
+      return 1
+    }
+  fi
+  ip rule add priority "$SMARTWAN_PRIORITY_HEALTH" from "$swp_source_ip" lookup "$swp_table" 2>/dev/null || \
+    ip rule add pref "$SMARTWAN_PRIORITY_HEALTH" from "$swp_source_ip" table "$swp_table" 2>/dev/null || true
+  ip route flush cache 2>/dev/null || true
+
+  swp_attempts=0
+  swp_successes=0
+  swp_details=""
+  swp_last_reason="service_transport_failed"
+  swp_timeout="$(watchdog_limit "$watchdog_service_timeout" 2)"
+  swp_error_file="$SMARTWAN_RUNTIME_DIR/smartwan-curl-$swp_wan.err.$$"
+  IFS=';'
+  for swp_spec in $swp_targets; do
+    [ -n "$swp_spec" ] || continue
+    swp_url="${swp_spec%%|*}"
+    swp_expected="${swp_spec#*|}"
+    [ "$swp_expected" != "$swp_spec" ] || swp_expected="200"
+    swp_label="${swp_url#*://}"
+    swp_label="${swp_label%%/*}"
+    swp_attempts=$((swp_attempts + 1))
+    : > "$swp_error_file"
+    swp_http_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+      --interface "$swp_source_ip" --connect-timeout "$swp_timeout" --max-time "$swp_timeout" \
+      "$swp_url" 2>"$swp_error_file")"
+    swp_exit=$?
+    if [ "$swp_exit" = "0" ] && [ "$swp_http_code" = "$swp_expected" ]; then
+      swp_successes=$((swp_successes + 1))
+      swp_probe_reason="ok"
+    elif [ "$swp_exit" = "0" ]; then
+      swp_probe_reason="unexpected_http_response"
+      swp_last_reason="$swp_probe_reason"
+    else
+      swp_probe_reason="$(service_failure_reason_for_exit "$swp_exit")"
+      swp_last_reason="$swp_probe_reason"
+    fi
+    swp_details="${swp_details:+$swp_details, }$swp_label:$swp_probe_reason${swp_http_code:+($swp_http_code)}"
+    [ "$swp_successes" -ge "$swp_required" ] && break
+    swp_remaining=$((swp_total - swp_attempts))
+    [ $((swp_successes + swp_remaining)) -lt "$swp_required" ] && break
+  done
+  IFS="$swp_old_ifs"
+  rm -f "$swp_error_file" 2>/dev/null || true
+  delete_priority_exact "$SMARTWAN_PRIORITY_HEALTH"
+  ip route flush table "$swp_table" 2>/dev/null || true
+  ip route flush cache 2>/dev/null || true
+
+  if [ "$swp_successes" -ge "$swp_required" ]; then
+    save_service_probe "$swp_wan" "ok" "none" "$swp_details" "$swp_successes" "$swp_attempts" "$swp_required"
+    return 0
+  fi
+  if [ "$swp_successes" -gt 0 ]; then
+    swp_last_reason="service_quorum_failed"
+  fi
+  save_service_probe "$swp_wan" "failed" "$swp_last_reason" "$swp_details" "$swp_successes" "$swp_attempts" "$swp_required"
+  return 1
 }
 
 wan_health_ok() {
   wan="$1"
+  WAN_HEALTH_KIND="none"
+  WAN_HEALTH_REASON="none"
+  WAN_HEALTH_DETAIL=""
   ifname="$(ifname_for_wan "$wan")"
   if ! wan_link_ok "$wan"; then
-    save_wan_probe_state "$wan" 0 0 1 "link_down"
+    WAN_HEALTH_KIND="complete"
+    WAN_HEALTH_REASON="physical_link_down"
+    WAN_HEALTH_DETAIL="The physical WAN link or interface is down"
+    save_wan_probe_state "$wan" 0 0 1 "link_down" "$WAN_HEALTH_KIND" "$WAN_HEALTH_REASON" "$WAN_HEALTH_DETAIL" "not_checked" "physical_link_down" "$WAN_HEALTH_DETAIL"
     return 1
   fi
 
@@ -1453,11 +1671,45 @@ wan_health_ok() {
   done
   IFS="$old_ifs"
 
-  if [ "$successes" -ge "$required" ]; then
-    save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "ok"
+  icmp_ok=0
+  [ "$successes" -ge "$required" ] && icmp_ok=1
+  service_ok=1
+  if [ "$watchdog_service_enabled" = "1" ]; then
+    service_ok=0
+    probe_services_via_wan "$wan" "$([ "$icmp_ok" = "1" ] && echo 0 || echo 1)" && service_ok=1
+  else
+    SERVICE_PROBE_RESULT="disabled"
+    SERVICE_PROBE_REASON="none"
+    SERVICE_PROBE_DETAIL="Service probes disabled"
+  fi
+
+  if [ "$service_ok" = "1" ]; then
+    if [ "$icmp_ok" = "1" ]; then
+      save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "ok" "none" "none" "ICMP and Internet service probes succeeded" "$SERVICE_PROBE_RESULT" "$SERVICE_PROBE_REASON" "$SERVICE_PROBE_DETAIL"
+    else
+      # Some providers block ICMP. A successful HTTPS quorum proves that the
+      # connection is still usable and avoids a false failover.
+      save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "ok_icmp_unavailable" "none" "icmp_unavailable" "ICMP failed but HTTPS/TCP service checks succeeded" "$SERVICE_PROBE_RESULT" "$SERVICE_PROBE_REASON" "$SERVICE_PROBE_DETAIL"
+    fi
     return 0
   fi
-  save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "internet_failed"
+
+  if [ "$icmp_ok" = "1" ]; then
+    WAN_HEALTH_KIND="partial"
+    WAN_HEALTH_REASON="${SERVICE_PROBE_REASON:-service_transport_failed}"
+    WAN_HEALTH_DETAIL="ICMP works, but Internet service probes failed: ${SERVICE_PROBE_DETAIL:-unknown service error}"
+    save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "partial_failure" "$WAN_HEALTH_KIND" "$WAN_HEALTH_REASON" "$WAN_HEALTH_DETAIL" "$SERVICE_PROBE_RESULT" "$SERVICE_PROBE_REASON" "$SERVICE_PROBE_DETAIL"
+    # Keep the diagnosis visible while allowing users to reserve full-WAN
+    # failover for complete outages only. Service/domain policies remain free
+    # to route selected traffic independently.
+    [ "$watchdog_partial_failover_enabled" = "1" ] && return 1
+    return 0
+  fi
+
+  WAN_HEALTH_KIND="complete"
+  WAN_HEALTH_REASON="internet_unreachable"
+  WAN_HEALTH_DETAIL="ICMP and Internet service probes failed: ${SERVICE_PROBE_DETAIL:-no Internet response}"
+  save_wan_probe_state "$wan" "$successes" "$attempts" "$required" "complete_failure" "$WAN_HEALTH_KIND" "$WAN_HEALTH_REASON" "$WAN_HEALTH_DETAIL" "$SERVICE_PROBE_RESULT" "$SERVICE_PROBE_REASON" "$SERVICE_PROBE_DETAIL"
   return 1
 }
 
@@ -1499,6 +1751,9 @@ load_watchdog_state() {
   state_last_failover_at=""
   state_last_recovery_at=""
   state_failed_wan=""
+  state_failure_kind="none"
+  state_failure_reason="none"
+  state_failure_detail=""
   state_normal_wans_mode=""
   state_normal_wans_lb_ratio=""
   state_normal_wans_routing_enable=""
@@ -1515,6 +1770,9 @@ load_watchdog_state() {
       last_failover_at=*) state_last_failover_at="${line#last_failover_at=}" ;;
       last_recovery_at=*) state_last_recovery_at="${line#last_recovery_at=}" ;;
       failed_wan=*) state_failed_wan="${line#failed_wan=}" ;;
+      failure_kind=*) state_failure_kind="${line#failure_kind=}" ;;
+      failure_reason=*) state_failure_reason="${line#failure_reason=}" ;;
+      failure_detail=*) state_failure_detail="${line#failure_detail=}" ;;
       normal_wans_mode=*) state_normal_wans_mode="${line#normal_wans_mode=}" ;;
       normal_wans_lb_ratio=*) state_normal_wans_lb_ratio="${line#normal_wans_lb_ratio=}" ;;
       normal_wans_routing_enable=*) state_normal_wans_routing_enable="${line#normal_wans_routing_enable=}" ;;
@@ -1535,6 +1793,15 @@ save_watchdog_state() {
   if [ "$#" -ge 6 ]; then
     state_failed_wan="$6"
   fi
+  if [ "$#" -ge 7 ]; then
+    state_failure_kind="$7"
+  fi
+  if [ "$#" -ge 8 ]; then
+    state_failure_reason="$8"
+  fi
+  if [ "$#" -ge 9 ]; then
+    state_failure_detail="$(sanitize_probe_value "$9")"
+  fi
   mkdir -p "$(dirname "$SMARTWAN_HEALTH_STATE")" 2>/dev/null
   {
     echo "active=$state_active"
@@ -1545,6 +1812,9 @@ save_watchdog_state() {
     echo "last_failover_at=$state_last_failover_at"
     echo "last_recovery_at=$state_last_recovery_at"
     echo "failed_wan=$state_failed_wan"
+    echo "failure_kind=${state_failure_kind:-none}"
+    echo "failure_reason=${state_failure_reason:-none}"
+    echo "failure_detail=$state_failure_detail"
     echo "normal_wans_mode=$state_normal_wans_mode"
     echo "normal_wans_lb_ratio=$state_normal_wans_lb_ratio"
     echo "normal_wans_routing_enable=$state_normal_wans_routing_enable"
@@ -1585,7 +1855,13 @@ choose_policy_wan() {
   primary_ok=0
   failover_ok=0
   wan_health_ok "$primary" && primary_ok=1
+  primary_failure_kind="$(sed -n 's/^outage_kind=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$primary.state" 2>/dev/null | head -n 1)"
+  primary_failure_reason="$(sed -n 's/^failure_reason=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$primary.state" 2>/dev/null | head -n 1)"
+  primary_failure_detail="$(sed -n 's/^failure_detail=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$primary.state" 2>/dev/null | head -n 1)"
   wan_health_ok "$failover" && failover_ok=1
+  failover_failure_kind="$(sed -n 's/^outage_kind=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$failover.state" 2>/dev/null | head -n 1)"
+  failover_failure_reason="$(sed -n 's/^failure_reason=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$failover.state" 2>/dev/null | head -n 1)"
+  failover_failure_detail="$(sed -n 's/^failure_detail=//p' "$SMARTWAN_RUNTIME_DIR/smartwan-health-$failover.state" 2>/dev/null | head -n 1)"
 
   if [ "$primary_ok" = "1" ] && [ "$failover_ok" = "1" ]; then
     if [ "$state_mode" = "global_failover_active" ]; then
@@ -1599,9 +1875,9 @@ choose_policy_wan() {
       recovered_wan="$state_failed_wan"
       log_msg "all WANs healthy; restoring ASUS Dual WAN load balance"
       state_last_recovery_at="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)"
-      [ -n "$recovered_wan" ] && record_wan_event "recovery" "$recovered_wan" "wan_recovered" "$primary" 0
+      [ -n "$recovered_wan" ] && record_wan_event "recovery" "$recovered_wan" "wan_recovered" "$primary" 0 "$state_failure_kind" "$state_failure_reason" "$state_failure_detail"
     fi
-    save_watchdog_state "$primary" 0 0 "dualwan_balanced_managed" "all_wans_healthy" ""
+    save_watchdog_state "$primary" 0 0 "dualwan_balanced_managed" "all_wans_healthy" "" "none" "none" ""
     echo "$primary"
     return 0
   fi
@@ -1610,15 +1886,21 @@ choose_policy_wan() {
     if [ "$primary_ok" = "1" ]; then
       healthy="$primary"
       failed="$failover"
+      failed_kind="${failover_failure_kind:-complete}"
+      failed_reason="${failover_failure_reason:-internet_unreachable}"
+      failed_detail="$failover_failure_detail"
     else
       healthy="$failover"
       failed="$primary"
+      failed_kind="${primary_failure_kind:-complete}"
+      failed_reason="${primary_failure_reason:-internet_unreachable}"
+      failed_detail="$primary_failure_detail"
     fi
 
     if [ "$state_mode" = "global_failover_active" ] \
       && [ "$current" = "$healthy" ] \
       && [ "$state_failed_wan" = "$failed" ]; then
-      save_watchdog_state "$healthy" "$state_failures" 0 "global_failover_active" "${failed}_failed_${healthy}_ok" "$failed"
+      save_watchdog_state "$healthy" "$state_failures" 0 "global_failover_active" "${failed}_failed_${healthy}_ok" "$failed" "$failed_kind" "$failed_reason" "$failed_detail"
       echo "$healthy"
       return 0
     fi
@@ -1629,8 +1911,8 @@ choose_policy_wan() {
       failures=1
     fi
     if [ "$failures" -lt "$fail_limit" ]; then
-      save_watchdog_state "$current" "$failures" 0 "dualwan_balanced_managed" "${failed}_probe_failed" "$failed"
-      log_msg "$failed health failed $failures/$fail_limit; keeping ASUS Dual WAN rules"
+      save_watchdog_state "$current" "$failures" 0 "dualwan_balanced_managed" "${failed}_probe_failed" "$failed" "$failed_kind" "$failed_reason" "$failed_detail"
+      log_msg "$failed $failed_kind failure reason=$failed_reason $failures/$fail_limit; keeping ASUS Dual WAN rules"
       echo "$current"
       return 0
     fi
@@ -1643,22 +1925,23 @@ choose_policy_wan() {
         && [ "$state_failed_wan" != "$failed" ]; then
         recovered_wan="$state_failed_wan"
         state_last_recovery_at="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)"
-        record_wan_event "recovery" "$recovered_wan" "wan_recovered" "$healthy" 0
+        record_wan_event "recovery" "$recovered_wan" "wan_recovered" "$healthy" 0 "$state_failure_kind" "$state_failure_reason" "$state_failure_detail"
         log_msg "$recovered_wan recovered while $failed remains unavailable"
       fi
-      log_msg "$failed health failed; forcing all traffic to healthy=$healthy"
+      log_msg "$failed $failed_kind failure reason=$failed_reason; forcing all traffic to healthy=$healthy detail=$failed_detail"
       state_last_failover_at="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)"
       state_mode="global_failover_active"
       state_failed_wan="$failed"
-      record_wan_event "outage" "$failed" "${failed}_failed_${healthy}_ok" "$healthy" "$failures"
+      record_wan_event "outage" "$failed" "${failed}_failed_${healthy}_ok" "$healthy" "$failures" "$failed_kind" "$failed_reason" "$failed_detail"
     fi
-    save_watchdog_state "$healthy" "$failures" 0 "global_failover_active" "${failed}_failed_${healthy}_ok" "$failed"
+    save_watchdog_state "$healthy" "$failures" 0 "global_failover_active" "${failed}_failed_${healthy}_ok" "$failed" "$failed_kind" "$failed_reason" "$failed_detail"
     echo "$healthy"
     return 0
   fi
 
   failures=$((state_failures + 1))
-  save_watchdog_state "$current" "$failures" 0 "${state_mode:-dualwan_balanced_managed}" "all_wans_failed_or_unreachable" "$state_failed_wan"
+  both_detail="$primary: ${primary_failure_detail:-unreachable}; $failover: ${failover_failure_detail:-unreachable}"
+  save_watchdog_state "$current" "$failures" 0 "${state_mode:-dualwan_balanced_managed}" "all_wans_failed_or_unreachable" "$state_failed_wan" "complete" "all_wans_unreachable" "$both_detail"
   echo "$current"
 }
 
@@ -2033,9 +2316,15 @@ print_status() {
   echo "domain_ipset_available=$(command_exists ipset && echo 1 || echo 0)"
   echo "domain_iptables_available=$(command_exists iptables && echo 1 || echo 0)"
   echo "watchdog_enabled=$watchdog_enabled"
+  echo "watchdog_targets=$watchdog_targets"
   echo "watchdog_interval=$watchdog_interval"
   echo "watchdog_fail_count=$watchdog_fail_count"
   echo "watchdog_recover_count=$watchdog_recover_count"
+  echo "watchdog_service_enabled=$watchdog_service_enabled"
+  echo "watchdog_partial_failover_enabled=$watchdog_partial_failover_enabled"
+  echo "watchdog_service_targets=$watchdog_service_targets"
+  echo "watchdog_service_interval=$watchdog_service_interval"
+  echo "watchdog_service_timeout=$watchdog_service_timeout"
   echo "watchdog_probe_timeout=1"
   echo "failover_target_seconds=5"
   echo "watchdog_health_priority=$SMARTWAN_PRIORITY_HEALTH"
@@ -2061,6 +2350,12 @@ print_status() {
       echo "${wan}_health_required=0"
       echo "${wan}_health_last_checked="
       echo "${wan}_health_last_success="
+      echo "${wan}_health_outage_kind=none"
+      echo "${wan}_health_failure_reason=none"
+      echo "${wan}_health_failure_detail="
+      echo "${wan}_health_service_result=not_checked"
+      echo "${wan}_health_service_reason=none"
+      echo "${wan}_health_service_detail="
     fi
   done
   if [ -f "$SMARTWAN_HEALTH_STATE" ]; then
@@ -2072,6 +2367,10 @@ print_status() {
     echo "watchdog_state_last_switch_reason="
     echo "watchdog_state_last_failover_at="
     echo "watchdog_state_last_recovery_at="
+    echo "watchdog_state_failed_wan="
+    echo "watchdog_state_failure_kind=none"
+    echo "watchdog_state_failure_reason=none"
+    echo "watchdog_state_failure_detail="
   fi
   if [ "$enabled" = "1" ] && [ "$orchestration_enabled" = "1" ]; then
     load_watchdog_state

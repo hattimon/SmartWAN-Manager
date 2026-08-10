@@ -2,12 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   automaticSwitchAllowed,
+  buildLocationDecisionProbes,
+  buildLastConfirmedLocationProbes,
   buildGoogleLocationPublicStatus,
   chooseTargetWan,
   detectedCountryChanges,
   googleLocationEventSignature,
   googleRoutingAction,
   googleRoutingMatches,
+  normalizePolicy,
   parseGoogleReverseGeocode,
   restoreGoogleBaselineRules,
   shouldRecordGoogleLocationEvent,
@@ -29,6 +32,27 @@ test('parses the country and city from a Google reverse-geocoding response', () 
     countryName: 'Polska',
     cityName: 'Example City',
   });
+});
+
+test('keeps the last location check and restoration outcome after reloading policy state', () => {
+  const restoredAt = '2026-08-10T16:20:00.000Z';
+  const policy = normalizePolicy({
+    enabled: true,
+    preferredCountryCode: 'PL',
+    lastCheckAt: restoredAt,
+    nextCheckAt: '2026-08-10T17:20:00.000Z',
+    lastAppliedWan: '',
+    lastOutcomeSignature: 'restored-signature',
+    lastResult: {
+      checkedAt: restoredAt,
+      outcome: 'routing_restored',
+      reason: 'last_confirmed_wans_match_expected_country',
+    },
+  });
+
+  assert.equal(policy.lastCheckAt, restoredAt);
+  assert.equal(policy.lastResult.outcome, 'routing_restored');
+  assert.equal(policy.lastOutcomeSignature, 'restored-signature');
 });
 
 test('uses a regional fallback when Google does not return a locality', () => {
@@ -116,6 +140,76 @@ test('never adds temporary Google rules when both WANs match the expected countr
     routingMatchesTarget: true,
     hasTargetWan: true,
   }), 'restore');
+});
+
+test('does not reroute Google when one WAN location measurement timed out', () => {
+  const probes = [
+    { id: 'wan0', ok: true, countryCode: 'PL' },
+    { id: 'wan1', ok: false, errorCategory: 'transport', error: 'curl: (28) timeout' },
+  ];
+  const decision = chooseTargetWan(
+    { preferredCountryCode: 'PL', preferredWan: 'auto' },
+    probes,
+    'wan1',
+  );
+
+  assert.equal(decision.targetWan, 'wan0', 'a partial result alone would otherwise select WAN0');
+  assert.equal(googleRoutingAction({
+    enabled: true,
+    measurementComplete: false,
+    allWansMatchExpectedCountry: false,
+    temporaryRoutingActive: false,
+    routingMatchesTarget: false,
+    hasTargetWan: true,
+  }), 'none');
+});
+
+test('uses the last successful location for API quota exhaustion but not for a transport failure', () => {
+  const cached = {
+    wan0: { countryCode: 'PL', countryName: 'Poland', cityName: 'Warsaw' },
+    wan1: { countryCode: 'PL', countryName: 'Poland', cityName: 'Sycow' },
+  };
+  const probes = buildLocationDecisionProbes([
+    { id: 'wan0', ok: false, errorCategory: 'api_quota', error: 'OVER_QUERY_LIMIT' },
+    { id: 'wan1', ok: false, errorCategory: 'transport', error: 'timeout' },
+  ], cached);
+
+  assert.equal(probes[0].ok, true);
+  assert.equal(probes[0].countryCode, 'PL');
+  assert.equal(probes[0].reusedLastKnown, true);
+  assert.equal(probes[1].ok, false);
+  assert.equal(probes[1].countryCode, undefined);
+});
+
+test('last confirmed matching locations may restore but never create temporary Google routing', () => {
+  const cached = {
+    wan0: { countryCode: 'PL', countryName: 'Poland' },
+    wan1: { countryCode: 'PL', countryName: 'Poland' },
+  };
+  const lastConfirmed = buildLastConfirmedLocationProbes([
+    { id: 'wan0', ok: true, countryCode: 'PL' },
+    { id: 'wan1', ok: false, errorCategory: 'transport', error: 'timeout' },
+  ], cached);
+  const allMatch = lastConfirmed.every((probe) => probe.ok && probe.countryCode === 'PL');
+
+  assert.equal(allMatch, true);
+  assert.equal(lastConfirmed[1].reusedLastKnown, true);
+  assert.equal(googleRoutingAction({
+    enabled: true,
+    measurementComplete: true,
+    allWansMatchExpectedCountry: allMatch,
+    temporaryRoutingActive: true,
+    routingMatchesTarget: true,
+    hasTargetWan: true,
+  }), 'restore');
+  assert.equal(googleRoutingAction({
+    enabled: true,
+    measurementComplete: false,
+    allWansMatchExpectedCountry: false,
+    temporaryRoutingActive: false,
+    routingMatchesTarget: false,
+    hasTargetWan: true,
+  }), 'none');
 });
 
 test('restores the exact pre-automation Google rules instead of deleting them', () => {

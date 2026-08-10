@@ -110,4 +110,22 @@ test('uses the fast watchdog defaults for a fresh SmartWAN configuration', () =>
   assert.equal(values.watchdog_interval, '1');
   assert.equal(values.watchdog_fail_count, '2');
   assert.equal(values.watchdog_recover_count, '3');
+  assert.equal(values.watchdog_service_enabled, '1');
+  assert.equal(values.watchdog_partial_failover_enabled, '1');
+  assert.equal(values.watchdog_service_interval, '5');
+  assert.equal(values.watchdog_service_timeout, '2');
+  assert.match(values.watchdog_service_targets, /connectivitycheck\.gstatic\.com/);
+});
+
+test('allows full-WAN failover for partial failures to be disabled independently', () => {
+  const values = parseSmartwanConfig(buildSmartwanConfig({
+    watchdogServiceEnabled: true,
+    watchdogPartialFailoverEnabled: false,
+  }));
+  const form = configValuesToForm(values);
+
+  assert.equal(values.watchdog_service_enabled, '1');
+  assert.equal(values.watchdog_partial_failover_enabled, '0');
+  assert.equal(form.watchdogServiceEnabled, true);
+  assert.equal(form.watchdogPartialFailoverEnabled, false);
 });

@@ -100,6 +100,15 @@ const defaultConfigForm = {
   watchdogInterval: '1',
   watchdogFailCount: '2',
   watchdogRecoverCount: '3',
+  watchdogServiceEnabled: true,
+  watchdogPartialFailoverEnabled: true,
+  watchdogServiceTargets: [
+    'https://connectivitycheck.gstatic.com/generate_204|204',
+    'https://www.cloudflare.com/cdn-cgi/trace|200',
+    'https://1.1.1.1/cdn-cgi/trace|200',
+  ].join('\n'),
+  watchdogServiceInterval: '5',
+  watchdogServiceTimeout: '2',
   vpnManagementEnabled: false,
   vpnInterface: 'tun21',
   vpnSubnet: '10.8.0.0/24',
@@ -2767,6 +2776,33 @@ function formatDualWanEventChange(change = {}, t, wanStatus = []) {
   return t('manualDualWanGenericAction');
 }
 
+function outageReasonText(reason, t) {
+  const knownReasons = new Set([
+    'physical_link_down',
+    'internet_unreachable',
+    'all_wans_unreachable',
+    'dns_resolution_failed',
+    'tcp_connect_failed',
+    'https_timeout',
+    'tls_handshake_failed',
+    'http_service_error',
+    'unexpected_http_response',
+    'service_quorum_failed',
+    'service_transport_failed',
+    'wan_route_unavailable',
+    'service_targets_missing',
+  ]);
+  if (knownReasons.has(reason)) return t(`failureReason_${reason}`);
+  return String(reason || t('unknown')).replaceAll('_', ' ');
+}
+
+function outageDiagnosticText(event = {}, t) {
+  const reason = outageReasonText(event.failureReason, t);
+  return t('routerOutageDiagnostic')
+    .replace('{reason}', reason)
+    .replace('{detail}', event.failureDetail || '');
+}
+
 function presentEventCopy(event, t, wanStatus = []) {
   const isPreFixWatchdog = ['router-watchdog-pre-fix', 'router-log-recovery'].includes(event.source);
   const isInferredRecovery = event.source === 'router-watchdog-inferred';
@@ -2795,7 +2831,6 @@ function presentEventCopy(event, t, wanStatus = []) {
     || event.activeWanLabel
     || t('availableWan');
   const checks = event.failures || 2;
-  const outageSummary = t(Number(checks) === 1 ? 'routerOutageSummaryOne' : 'routerOutageSummary');
   const summary = isPreFixWatchdog
     ? event.type === 'recovery'
       ? t('preFixRecoverySummary').replace('{wan}', wan)
@@ -2803,7 +2838,13 @@ function presentEventCopy(event, t, wanStatus = []) {
     : isWanTransition
       ? event.type === 'recovery'
         ? t('routerRecoverySummary').replace('{wan}', wan)
-        : outageSummary
+        : t(event.outageKind === 'partial'
+          ? 'routerPartialOutageSummary'
+          : event.outageKind === 'complete'
+            ? 'routerCompleteOutageSummary'
+            : Number(checks) === 1
+              ? 'routerOutageSummaryOne'
+              : 'routerOutageSummary')
           .replace('{wan}', wan)
           .replace('{checks}', checks)
       : isManualDualWan
@@ -2824,9 +2865,9 @@ function presentEventCopy(event, t, wanStatus = []) {
       : isWanTransition
         ? event.type === 'recovery'
           ? t('routerRecoveryAction')
-          : event.activeWan
+          : `${event.activeWan
             ? t('routerOutageAction').replace('{wan}', activeWan)
-            : t('routerOutageDetectedAction')
+            : t('routerOutageDetectedAction')} ${outageDiagnosticText(event, t)}`.trim()
         : isManualDualWan || isGoogleLocation
           ? formatDualWanEventChange(event.change, t, wanStatus)
           : isSmartWanConfig
@@ -2979,12 +3020,16 @@ function PublicNetworkStatus({ t, data, compact = false }) {
 }
 
 function LoginCatMascot({
+  t,
   browserId,
   language,
   wanStatus = [],
   statusStale = false,
   failedWan = '',
   recoveryPending = false,
+  outageKind = '',
+  failureReason = '',
+  activeWanLabel = '',
   soundEnabled: aurelkaSoundEnabled,
   animationEnabled: aurelkaAnimationEnabled,
   setSoundEnabled: setAurelkaSoundEnabled,
@@ -3052,12 +3097,22 @@ function LoginCatMascot({
   const failedWanNames = failedWans.map(
     (wan) => wan.operator || String(wan.label || wan.id || 'WAN').split('/')[0].trim(),
   );
+  const classifiedOutageText = failedWanNames.length > 1
+    ? t('aurelkaAllWansOutageNotice')
+      .replace('{reason}', outageReasonText(failureReason || 'all_wans_unreachable', t))
+    : failedWanNames.length === 1 && outageKind
+      ? t('aurelkaFailoverNotice')
+      .replace('{kind}', t(outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'))
+      .replace('{wan}', failedWanNames[0])
+      .replace('{reason}', outageReasonText(failureReason, t))
+      .replace('{active}', activeWanLabel || copy.statusChecking)
+      : '';
   const networkStatusText = networkMood === 'happy'
     ? copy.internetHappy
     : networkMood === 'outage'
-      ? failedWanNames.length === 1
+      ? classifiedOutageText || (failedWanNames.length === 1
         ? copy.oneWanDown(failedWanNames[0])
-        : copy.manyWansDown(failedWanNames.join(' + '))
+        : copy.manyWansDown(failedWanNames.join(' + ')))
       : copy.statusChecking;
   const eyeTone = (wanId) => {
     if (statusStale || !wanStatus.length) return 'checking';
@@ -3738,16 +3793,35 @@ function LoginPanel({
   const connectionSummary = publicMapState
     ? `${onlineWanCount}/${publicWans.length || 0} WAN · VPN ${publicMapState.vpn?.interfaceUp ? t('connected') : t('disconnected')}`
     : t('loadingPublicStatus');
+  const routingStatus = publicMapState?.routing || {};
+  const failedPublicWan = publicWans.find((wan) => wan.id === routingStatus.failedWan);
+  const loginFailoverNotice = routingStatus.allWansDown
+    ? t('allWansOutageNotice')
+      .replace('{reason}', outageReasonText(routingStatus.failureReason || 'all_wans_unreachable', t))
+    : routingStatus.failoverActive && failedPublicWan
+      ? t('loginFailoverNotice')
+      .replace(
+        '{kind}',
+        t(routingStatus.outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'),
+      )
+      .replace('{wan}', failedPublicWan.operator || failedPublicWan.label || failedPublicWan.id.toUpperCase())
+      .replace('{reason}', outageReasonText(routingStatus.failureReason, t))
+      .replace('{active}', routingStatus.activeWanLabel || routingStatus.activeWan?.toUpperCase() || t('availableWan'))
+      : '';
 
   return (
     <div className={`login-shell ${publicMapOpen ? 'public-map-open' : ''}`}>
       <LoginCatMascot
+        t={t}
         browserId={browserIdRef.current}
         language={language}
         wanStatus={publicWans}
         statusStale={Boolean(publicMapState?.stale)}
         failedWan={publicMapState?.routing?.failedWan || ''}
         recoveryPending={Boolean(publicMapState?.routing?.recoveryPending)}
+        outageKind={publicMapState?.routing?.outageKind || ''}
+        failureReason={publicMapState?.routing?.failureReason || ''}
+        activeWanLabel={publicMapState?.routing?.activeWanLabel || ''}
         soundEnabled={aurelkaSoundEnabled}
         animationEnabled={aurelkaAnimationEnabled}
         setSoundEnabled={setAurelkaSoundEnabled}
@@ -3834,6 +3908,12 @@ function LoginPanel({
             </div>
           </div>
         </div>
+        {loginFailoverNotice ? (
+          <div className={`login-failover-notice ${routingStatus.outageKind || 'complete'}`} role="alert">
+            <AlertTriangle size={18} />
+            <strong>{loginFailoverNotice}</strong>
+          </div>
+        ) : null}
         <div className={`login-status-disclosure ${connectionTone} ${statusOpen ? 'open' : 'attention'}`}>
           <button
             type="button"
@@ -4053,6 +4133,29 @@ function DashboardPanel({
   const merlinHooksOk = status.hooks_installed === '1';
   const securityOk = sshOk && jffsOk && panelKeyOk && smartwanScriptsOk && smartwanConfigOk && merlinHooksOk;
   const dualWanStatus = routerState?.dualWan || {};
+  const failedWanId = status.watchdog_state_failed_wan || '';
+  const failedWanName = failedWanId === 'wan0' ? wan0 : failedWanId === 'wan1' ? wan1 : failedWanId;
+  const activeWanName = status.active_default_wan === 'wan0'
+    ? wan0
+    : status.active_default_wan === 'wan1'
+      ? wan1
+      : status.active_default_wan;
+  const dashboardWans = routerState?.wanStatus || [];
+  const dashboardAllWansDown = dashboardWans.length > 0
+    && dashboardWans.every((wan) => !['ok', 'reachable'].includes(String(wan.internetStatus || '').toLowerCase()));
+  const dashboardFailoverNotice = dashboardAllWansDown
+    ? t('allWansOutageNotice')
+      .replace('{reason}', outageReasonText(status.watchdog_state_failure_reason || 'all_wans_unreachable', t))
+    : status.failover_override_active === '1' && failedWanName
+      ? t('loginFailoverNotice')
+      .replace(
+        '{kind}',
+        t(status.watchdog_state_failure_kind === 'partial' ? 'outageKindPartial' : 'outageKindComplete'),
+      )
+      .replace('{wan}', `${failedWanName} (${failedWanId.toUpperCase()})`)
+      .replace('{reason}', outageReasonText(status.watchdog_state_failure_reason, t))
+      .replace('{active}', `${activeWanName} (${String(status.active_default_wan || '').toUpperCase()})`)
+      : '';
 
   return (
     <section className="dashboard dashboard-reference">
@@ -4063,6 +4166,16 @@ function DashboardPanel({
       />
 
       <h1 className="page-title">{t('dashboard')}</h1>
+
+      {dashboardFailoverNotice ? (
+        <div className={`dashboard-failover-notice ${status.watchdog_state_failure_kind || 'complete'}`} role="alert">
+          <AlertTriangle size={21} />
+          <div>
+            <strong>{dashboardFailoverNotice}</strong>
+            {status.watchdog_state_failure_detail ? <small>{status.watchdog_state_failure_detail}</small> : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="status-card-grid">
         <StatusCard
@@ -5207,6 +5320,9 @@ function SmartWanPanel({
     const labels = {
       ok: t('probeResultOk'),
       internet_failed: t('probeResultInternetFailed'),
+      partial_failure: t('probeResultPartialFailure'),
+      complete_failure: t('probeResultCompleteFailure'),
+      ok_icmp_unavailable: t('probeResultIcmpUnavailable'),
       link_down: t('probeResultLinkDown'),
       test_forced_down: t('probeResultTestForcedDown'),
       not_checked: t('probeResultNotChecked'),
@@ -5248,6 +5364,11 @@ function SmartWanPanel({
       required,
       lastChecked: status[`${prefix}last_checked`] || t('notDetected'),
       lastSuccess: status[`${prefix}last_success`] || t('notDetected'),
+      outageKind: status[`${prefix}outage_kind`] || 'none',
+      failureReason: status[`${prefix}failure_reason`] || 'none',
+      failureDetail: status[`${prefix}failure_detail`] || '',
+      serviceResult: status[`${prefix}service_result`] || 'not_checked',
+      serviceDetail: status[`${prefix}service_detail`] || '',
       tone,
     };
   };
@@ -5398,6 +5519,28 @@ function SmartWanPanel({
         <Field label={t('watchdogTargets')} hint={watchdogHint}>
           <TextArea rows={3} value={configForm.watchdogTargets} onChange={(event) => update({ watchdogTargets: event.target.value })} />
         </Field>
+        <div className="switch-row">
+          <Toggle
+            checked={configForm.watchdogServiceEnabled}
+            onChange={(value) => update({ watchdogServiceEnabled: value })}
+            label={t('watchdogHybridServiceChecks')}
+          />
+        </div>
+        {configForm.watchdogServiceEnabled ? (
+          <div className="switch-row">
+            <Toggle
+              checked={configForm.watchdogPartialFailoverEnabled}
+              onChange={(value) => update({ watchdogPartialFailoverEnabled: value })}
+              label={t('watchdogPartialFailover')}
+            />
+            <small>{t('watchdogPartialFailoverHint')}</small>
+          </div>
+        ) : null}
+        {configForm.watchdogServiceEnabled ? (
+          <Field label={t('watchdogServiceTargets')} hint={t('watchdogServiceTargetsHint')}>
+            <TextArea rows={3} value={configForm.watchdogServiceTargets} onChange={(event) => update({ watchdogServiceTargets: event.target.value })} />
+          </Field>
+        ) : null}
         <div className="form-grid">
           <Field label={t('watchdogInterval')}>
             <TextInput value={configForm.watchdogInterval} onChange={(event) => update({ watchdogInterval: event.target.value })} />
@@ -5408,6 +5551,12 @@ function SmartWanPanel({
           <Field label={t('watchdogRecoverCount')}>
             <TextInput value={configForm.watchdogRecoverCount} onChange={(event) => update({ watchdogRecoverCount: event.target.value })} />
           </Field>
+          {configForm.watchdogServiceEnabled ? <Field label={t('watchdogServiceInterval')}>
+            <TextInput value={configForm.watchdogServiceInterval} onChange={(event) => update({ watchdogServiceInterval: event.target.value })} />
+          </Field> : null}
+          {configForm.watchdogServiceEnabled ? <Field label={t('watchdogServiceTimeout')}>
+            <TextInput value={configForm.watchdogServiceTimeout} onChange={(event) => update({ watchdogServiceTimeout: event.target.value })} />
+          </Field> : null}
         </div>
         </> : null}
         {level >= 3 ? <>
@@ -5586,7 +5735,11 @@ function SmartWanPanel({
               <dl>
                 <div><dt>{t('lastProbe')}</dt><dd>{probe.lastChecked}</dd></div>
                 <div><dt>{t('lastSuccessfulProbe')}</dt><dd>{probe.lastSuccess}</dd></div>
+                {probe.outageKind !== 'none' ? <div><dt>{t('failureType')}</dt><dd>{t(probe.outageKind === 'partial' ? 'outageKindPartial' : 'outageKindComplete')}</dd></div> : null}
+                {probe.failureReason !== 'none' ? <div><dt>{t('diagnosis')}</dt><dd>{outageReasonText(probe.failureReason, t)}</dd></div> : null}
+                <div><dt>{t('serviceProbe')}</dt><dd>{probe.serviceResult}</dd></div>
               </dl>
+              {probe.failureDetail || probe.serviceDetail ? <small>{probe.failureDetail || probe.serviceDetail}</small> : null}
             </div>
           ))}
         </div>

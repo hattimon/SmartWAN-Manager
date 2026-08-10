@@ -57,9 +57,12 @@ export function parseRouterJournal(raw = '') {
         activeWan,
         failures,
         mode,
+        outageKind,
+        failureReason,
+        failureDetail,
       ] = line.split('|');
       const epochNumber = Number(epoch);
-      if (version !== '1' || !id || !['outage', 'recovery'].includes(type) || !wanId) return null;
+      if (!['1', '2'].includes(version) || !id || !['outage', 'recovery'].includes(type) || !wanId) return null;
       return {
         id: `router-${id}`,
         type,
@@ -68,6 +71,9 @@ export function parseRouterJournal(raw = '') {
         activeWan: activeWan || '',
         failures: Number.isFinite(Number(failures)) ? Number(failures) : 0,
         mode: mode || '',
+        outageKind: outageKind || '',
+        failureReason: failureReason || '',
+        failureDetail: failureDetail || '',
         routerTime: routerTime || '',
         at: Number.isFinite(epochNumber) && epochNumber > 0
           ? new Date(epochNumber * 1000).toISOString()
@@ -128,7 +134,31 @@ export async function ingestRouterJournal(raw) {
       };
       changed = true;
     }
-    if (store.events.some((event) => event.id === entry.id)) continue;
+    const existingEvent = store.events.find((event) => event.id === entry.id);
+    if (existingEvent) {
+      // Rebuild the active-outage index from the ordered router journal. This
+      // repairs a missing index after a process restart or an interrupted
+      // atomic store update without duplicating historical events.
+      if (entry.type === 'outage' && store.activeOutages?.[entry.wanId]?.id !== entry.id) {
+        store.activeOutages[entry.wanId] = {
+          ...existingEvent,
+          id: entry.id,
+          wanId: entry.wanId,
+          activeWan: entry.activeWan || existingEvent.activeWan || '',
+          reason: entry.reason || existingEvent.reason || '',
+          outageKind: entry.outageKind || existingEvent.outageKind || 'complete',
+          failureReason: entry.failureReason || existingEvent.failureReason || 'internet_unreachable',
+          failureDetail: entry.failureDetail || existingEvent.failureDetail || '',
+        };
+        store.wanState[entry.wanId] = { online: false, observedAt: entry.at || existingEvent.startedAt };
+        changed = true;
+      } else if (entry.type === 'recovery' && store.activeOutages?.[entry.wanId]) {
+        delete store.activeOutages[entry.wanId];
+        store.wanState[entry.wanId] = { online: true, observedAt: entry.at || existingEvent.endedAt };
+        changed = true;
+      }
+      continue;
+    }
     const at = entry.at || new Date().toISOString();
     const label = entry.wanId.toUpperCase();
     if (entry.type === 'outage') {
@@ -144,6 +174,9 @@ export async function ingestRouterJournal(raw) {
         failures: entry.failures || 1,
         routerTime: entry.routerTime,
         reason: entry.reason,
+        outageKind: entry.outageKind || 'complete',
+        failureReason: entry.failureReason || 'internet_unreachable',
+        failureDetail: entry.failureDetail || '',
       };
       store.activeOutages[entry.wanId] = outage;
       addEvent(store, {
@@ -160,6 +193,9 @@ export async function ingestRouterJournal(raw) {
         summary: `Internet access through ${label} was lost after ${entry.failures || 1} confirmed failed check(s).`,
         routerTime: entry.routerTime,
         reason: entry.reason,
+        outageKind: entry.outageKind || 'complete',
+        failureReason: entry.failureReason || 'internet_unreachable',
+        failureDetail: entry.failureDetail || '',
       });
       store.wanState[entry.wanId] = { online: false, observedAt: at };
     } else {
@@ -187,6 +223,9 @@ export async function ingestRouterJournal(raw) {
         routerTime: entry.routerTime,
         reason: entry.reason,
         activeWan: entry.activeWan,
+        outageKind: entry.outageKind || outage?.outageKind || '',
+        failureReason: entry.failureReason || outage?.failureReason || '',
+        failureDetail: entry.failureDetail || outage?.failureDetail || '',
       });
       delete store.activeOutages[entry.wanId];
       store.wanState[entry.wanId] = { online: true, observedAt: at };
@@ -231,6 +270,16 @@ export async function ingestWanState(state, { source = 'automatic' } = {}) {
 
     const label = wanLabel(wan);
     if (!nextOnline) {
+      const healthPrefix = `${wan.id}_health_`;
+      const outageKind = status[`${healthPrefix}outage_kind`]
+        || status.watchdog_state_failure_kind
+        || 'complete';
+      const failureReason = status[`${healthPrefix}failure_reason`]
+        || status.watchdog_state_failure_reason
+        || 'internet_unreachable';
+      const failureDetail = status[`${healthPrefix}failure_detail`]
+        || status.watchdog_state_failure_detail
+        || '';
       const outage = {
         id: eventId('outage', wan.id, nowIso),
         wanId: wan.id,
@@ -239,6 +288,9 @@ export async function ingestWanState(state, { source = 'automatic' } = {}) {
         startedAt: nowIso,
         profileBefore: status.normal_dualwan_mode === 'lb' ? 'Dual WAN — Load Balance' : 'SmartWAN',
         failoverProfile: failoverActive ? 'SmartWAN Failover' : '',
+        outageKind,
+        failureReason,
+        failureDetail,
       };
       store.activeOutages[wan.id] = outage;
       addEvent(store, {
@@ -249,6 +301,9 @@ export async function ingestWanState(state, { source = 'automatic' } = {}) {
         action: failoverActive ? 'Traffic moved to the available WAN.' : 'WAN marked unavailable after confirmed failed checks.',
         profile: outage.failoverProfile || outage.profileBefore,
         summary: `Internet access through ${label} was lost.`,
+        outageKind,
+        failureReason,
+        failureDetail,
       });
     } else {
       const outage = store.activeOutages[wan.id];

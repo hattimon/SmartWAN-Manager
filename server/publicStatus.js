@@ -134,6 +134,12 @@ export function applyActiveOutages(state, activeOutages = []) {
       watchdog_state_failed_wan: failedWan,
       watchdog_state_last_failover_at:
         latestOutage?.startedAt || state?.status?.watchdog_state_last_failover_at || '',
+      watchdog_state_failure_kind:
+        latestOutage?.outageKind || state?.status?.watchdog_state_failure_kind || '',
+      watchdog_state_failure_reason:
+        latestOutage?.failureReason || state?.status?.watchdog_state_failure_reason || '',
+      watchdog_state_failure_detail:
+        latestOutage?.failureDetail || state?.status?.watchdog_state_failure_detail || '',
     },
   };
 }
@@ -223,6 +229,7 @@ export function buildRoutingSummary(state) {
   }));
   const activeWan = wanStatus.find((wan) => wan.id === status.active_default_wan && wan.online)
     || wanStatus.find((wan) => wan.online);
+  const allWansDown = wanStatus.length > 0 && wanStatus.every((wan) => !wan.online);
   return {
     profile: currentProfile(state),
     dualWanEnabled: Boolean(dualWan.enabled),
@@ -236,6 +243,10 @@ export function buildRoutingSummary(state) {
       && wanStatus.length > 0
       && wanStatus.every((wan) => wan.online),
     failoverSince: status.watchdog_state_last_failover_at || '',
+    outageKind: status.watchdog_state_failure_kind || '',
+    failureReason: status.watchdog_state_failure_reason || '',
+    failureDetail: status.watchdog_state_failure_detail || '',
+    allWansDown,
     recoveryAt: status.watchdog_state_last_recovery_at || '',
     activeWan: activeWan?.id || '',
     activeWanLabel: activeWan?.label || '',

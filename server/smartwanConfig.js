@@ -95,6 +95,15 @@ export function buildSmartwanConfig(input = {}) {
     watchdog_interval: normalizeScalar(input.watchdogInterval, '1'),
     watchdog_fail_count: normalizeScalar(input.watchdogFailCount, '2'),
     watchdog_recover_count: normalizeScalar(input.watchdogRecoverCount, '3'),
+    watchdog_service_enabled: normalizeBoolean(input.watchdogServiceEnabled ?? true),
+    watchdog_partial_failover_enabled: normalizeBoolean(input.watchdogPartialFailoverEnabled ?? true),
+    watchdog_service_targets: normalizeList(input.watchdogServiceTargets || [
+      'https://connectivitycheck.gstatic.com/generate_204|204',
+      'https://www.cloudflare.com/cdn-cgi/trace|200',
+      'https://1.1.1.1/cdn-cgi/trace|200',
+    ].join('\n')),
+    watchdog_service_interval: normalizeScalar(input.watchdogServiceInterval, '5'),
+    watchdog_service_timeout: normalizeScalar(input.watchdogServiceTimeout, '2'),
     vpn_management_enabled: normalizeBoolean(input.vpnManagementEnabled),
     vpn_interface: normalizeScalar(input.vpnInterface, 'tun21'),
     vpn_subnet: normalizeScalar(input.vpnSubnet, '10.8.0.0/24'),
@@ -153,6 +162,11 @@ export function buildSmartwanConfig(input = {}) {
     `watchdog_interval=${shellConfigValue(values.watchdog_interval)}`,
     `watchdog_fail_count=${shellConfigValue(values.watchdog_fail_count)}`,
     `watchdog_recover_count=${shellConfigValue(values.watchdog_recover_count)}`,
+    `watchdog_service_enabled=${values.watchdog_service_enabled}`,
+    `watchdog_partial_failover_enabled=${values.watchdog_partial_failover_enabled}`,
+    `watchdog_service_targets=${shellConfigValue(values.watchdog_service_targets)}`,
+    `watchdog_service_interval=${shellConfigValue(values.watchdog_service_interval)}`,
+    `watchdog_service_timeout=${shellConfigValue(values.watchdog_service_timeout)}`,
     `vpn_management_enabled=${values.vpn_management_enabled}`,
     `vpn_interface=${shellConfigValue(values.vpn_interface)}`,
     `vpn_subnet=${shellConfigValue(values.vpn_subnet)}`,
@@ -231,6 +245,19 @@ export function configValuesToForm(values = {}) {
     watchdogInterval: values.watchdog_interval || '1',
     watchdogFailCount: values.watchdog_fail_count || '2',
     watchdogRecoverCount: values.watchdog_recover_count || '3',
+    watchdogServiceEnabled: values.watchdog_service_enabled ? values.watchdog_service_enabled !== '0' : true,
+    watchdogPartialFailoverEnabled: values.watchdog_partial_failover_enabled
+      ? values.watchdog_partial_failover_enabled !== '0'
+      : true,
+    watchdogServiceTargets:
+      (values.watchdog_service_targets || '').split(';').filter(Boolean).join('\n')
+      || [
+        'https://connectivitycheck.gstatic.com/generate_204|204',
+        'https://www.cloudflare.com/cdn-cgi/trace|200',
+        'https://1.1.1.1/cdn-cgi/trace|200',
+      ].join('\n'),
+    watchdogServiceInterval: values.watchdog_service_interval || '5',
+    watchdogServiceTimeout: values.watchdog_service_timeout || '2',
     vpnManagementEnabled: values.vpn_management_enabled === '1',
     vpnInterface: values.vpn_interface || 'tun21',
     vpnSubnet: values.vpn_subnet || '10.8.0.0/24',

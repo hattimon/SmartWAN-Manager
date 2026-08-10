@@ -47,3 +47,13 @@ test('infers recovery of the newly active WAN when failures swap between links',
   assert.equal(inferred.durationSeconds, 169);
   assert.equal(inferred.reason, 'active_wan_confirmed_recovered');
 });
+
+test('parses classified partial-outage diagnostics from journal version 2', () => {
+  const [entry] = parseRouterJournal(
+    '2|partial-wan1|1786350000|2026-08-10 15:00:00|outage|wan1|wan1_failed_wan0_ok|wan0|2|global_failover_active|partial|https_timeout|ICMP works, but HTTPS timed out',
+  );
+
+  assert.equal(entry.outageKind, 'partial');
+  assert.equal(entry.failureReason, 'https_timeout');
+  assert.match(entry.failureDetail, /ICMP works/);
+});
