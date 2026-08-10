@@ -109,6 +109,7 @@ export function selectDdnsWan(state, preferredWan = 'auto') {
   const wanStatus = Array.isArray(state?.wanStatus) ? state.wanStatus : [];
   const online = wanStatus.filter((wan) => (
     ['ok', 'reachable'].includes(String(wan?.internetStatus || '').toLowerCase())
+    && wan?.publicIpStale !== true
     && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(wan?.publicIp || ''))
   ));
   if (!online.length) return null;

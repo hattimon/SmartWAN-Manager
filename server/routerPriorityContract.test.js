@@ -131,3 +131,12 @@ test('hybrid watchdog detects service failures that ICMP alone cannot see', () =
   );
   assert.match(backend, /record_wan_event "outage"[\s\S]*?"\$failed_kind" "\$failed_reason" "\$failed_detail"/);
 });
+
+test('read-only WAN diagnostics outrank emergency routing without sharing watchdog priority', () => {
+  const routerOps = fs.readFileSync(new URL('./routerOps.js', import.meta.url), 'utf8');
+  assert.match(routerOps, /DIAGNOSTIC_WAN_PRIORITY=79/);
+  assert.match(routerOps, /ip rule add pref "\$DIAGNOSTIC_WAN_PRIORITY" from "\$source_ip" table "\$table"/);
+  assert.match(routerOps, /ip rule add pref "\$DIAGNOSTIC_WAN_PRIORITY" from "\$source_ip" to "\$target\/32" table "\$table"/);
+  assert.ok(79 < priority('SMARTWAN_PRIORITY_HEALTH'));
+  assert.ok(79 < priority('SMARTWAN_PRIORITY_FAILOVER'));
+});

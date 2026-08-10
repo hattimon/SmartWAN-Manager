@@ -285,6 +285,10 @@ function publicNetworkMapState(state) {
       'ipaddr',
       'gateway',
       'publicIp',
+      'publicIpStatus',
+      'publicIpSource',
+      'publicIpConfirmedAt',
+      'publicIpStale',
       'dnsServers',
       'dnsMode',
       'linkStatus',
@@ -1075,7 +1079,8 @@ app.post(
 app.get(
   '/api/router/state',
   asyncRoute(async (_req, res) => {
-    const state = await probeRouter(await routerSettings());
+    const settings = await routerSettings();
+    const state = await serializedRouterRead(() => probeRouter(settings));
     if (state?.status?.failover_override_active !== '1') {
       res.json(state);
       return;

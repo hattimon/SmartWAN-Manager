@@ -9,6 +9,7 @@ import {
   shellQuote,
   validatePresetName,
 } from './smartwanConfig.js';
+import { applyWanPublicIpHistory } from './publicIpHistoryStore.js';
 
 function remoteDir(settings) {
   return settings.smartwanDir || '/jffs/addons/smartwan.d';
@@ -575,6 +576,7 @@ tail -n +2 /proc/net/arp 2>/dev/null | while read -r client_ip _ client_flags cl
 done
 
 section wan_status
+DIAGNOSTIC_WAN_PRIORITY=79
 conf_value(){ sed -n "s/^$1=//p" "$SWDIR/smartwan.conf" 2>/dev/null | tail -n 1 | sed "s/^['\\\"]//;s/['\\\"]$//"; }
 [ -x /usr/sbin/curl ] && curl(){ /usr/sbin/curl "$@"; }
 [ -x /usr/sbin/wget ] && wget(){ /usr/sbin/wget "$@"; }
@@ -606,16 +608,7 @@ public_ip_for_ifname(){
   public_ip_status="not_checked"
   public_ip_source=""
   [ -n "$iface" ] || { echo "|no_interface|"; return 0; }
-  cache="/tmp/smartwan_public_ip_$iface"
   now="$(date +%s 2>/dev/null || echo 0)"
-  if [ -f "$cache" ]; then
-    read -r cached_at cached_ip < "$cache"
-    age=$((now - cached_at))
-    if [ "$age" -ge 0 ] 2>/dev/null && [ "$age" -lt 60 ] && [ -n "$cached_ip" ]; then
-      echo "$cached_ip|ok|cache"
-      return 0
-    fi
-  fi
   is_public_ipv4(){
     printf '%s\\n' "$1" | awk -F. '
       NF == 4 {
@@ -644,12 +637,12 @@ public_ip_for_ifname(){
   public_rule_added=0
   cleanup_public_ip_probe(){
     if [ "$public_rule_added" = "1" ]; then
-      while ip rule del pref 90 from "$source_ip" table "$table" 2>/dev/null; do :; done
+      while ip rule del pref "$DIAGNOSTIC_WAN_PRIORITY" from "$source_ip" table "$table" 2>/dev/null; do :; done
       ip route flush cache 2>/dev/null || true
     fi
   }
   if [ -n "$source_ip" ] && [ -n "$table" ]; then
-    ip rule add pref 90 from "$source_ip" table "$table" 2>/dev/null && public_rule_added=1
+    ip rule add pref "$DIAGNOSTIC_WAN_PRIORITY" from "$source_ip" table "$table" 2>/dev/null && public_rule_added=1
     ip route flush cache 2>/dev/null || true
     trap cleanup_public_ip_probe EXIT
   fi
@@ -693,7 +686,6 @@ public_ip_for_ifname(){
         [0-9]*.[0-9]*.[0-9]*.[0-9]*)
           public_ip_status="ok"
           public_ip_source="curl-source:$endpoint"
-          echo "$now $ip" > "$cache"
           echo "$ip|$public_ip_status|$public_ip_source"
           return 0
           ;;
@@ -715,7 +707,6 @@ public_ip_for_ifname(){
           [0-9]*.[0-9]*.[0-9]*.[0-9]*)
             public_ip_status="ok"
             public_ip_source="wget-bind:$endpoint"
-            echo "$now $ip" > "$cache"
             echo "$ip|$public_ip_status|$public_ip_source"
             return 0
             ;;
@@ -732,7 +723,6 @@ public_ip_for_ifname(){
       [0-9]*.[0-9]*.[0-9]*.[0-9]*)
         public_ip_status="ok"
         public_ip_source="wget-default:http://api.ipify.org"
-        echo "$now $ip" > "$cache"
         echo "$ip|$public_ip_status|$public_ip_source"
         return 0
         ;;
@@ -746,7 +736,6 @@ public_ip_for_ifname(){
         [0-9]*.[0-9]*.[0-9]*.[0-9]*)
           public_ip_status="ok"
           public_ip_source="nslookup:opendns-default"
-          echo "$now $ip" > "$cache"
           echo "$ip|$public_ip_status|$public_ip_source"
           return 0
           ;;
@@ -758,7 +747,6 @@ public_ip_for_ifname(){
         [0-9]*.[0-9]*.[0-9]*.[0-9]*)
           public_ip_status="ok"
           public_ip_source="nslookup:google-dns-policy"
-          echo "$now $ip" > "$cache"
           echo "$ip|$public_ip_status|$public_ip_source"
           return 0
           ;;
@@ -782,7 +770,7 @@ internet_probe_for_ifname(){
     rule_added=0
     route_added=0
     if [ -n "$table" ]; then
-      ip rule add pref 90 from "$source_ip" to "$target/32" table "$table" 2>/dev/null && rule_added=1
+      ip rule add pref "$DIAGNOSTIC_WAN_PRIORITY" from "$source_ip" to "$target/32" table "$table" 2>/dev/null && rule_added=1
       if [ -n "$gateway" ]; then
         ip route replace "$target/32" via "$gateway" dev "$iface" table "$table" 2>/dev/null && route_added=1
       else
@@ -791,12 +779,12 @@ internet_probe_for_ifname(){
     fi
     if ping -I "$source_ip" -c 1 -W 1 "$target" >/dev/null 2>&1; then
       [ "$route_added" = "1" ] && ip route del "$target/32" table "$table" >/dev/null 2>&1 || true
-      [ "$rule_added" = "1" ] && ip rule del pref 90 from "$source_ip" to "$target/32" table "$table" >/dev/null 2>&1 || true
+      [ "$rule_added" = "1" ] && ip rule del pref "$DIAGNOSTIC_WAN_PRIORITY" from "$source_ip" to "$target/32" table "$table" >/dev/null 2>&1 || true
       echo "ok|$target|forced"
       return 0
     fi
     [ "$route_added" = "1" ] && ip route del "$target/32" table "$table" >/dev/null 2>&1 || true
-    [ "$rule_added" = "1" ] && ip rule del pref 90 from "$source_ip" to "$target/32" table "$table" >/dev/null 2>&1 || true
+    [ "$rule_added" = "1" ] && ip rule del pref "$DIAGNOSTIC_WAN_PRIORITY" from "$source_ip" to "$target/32" table "$table" >/dev/null 2>&1 || true
   done
   echo "failed|$last_target|forced"
 }
@@ -877,9 +865,9 @@ for idx in 0 1; do
   internet_source="\${internet_rest#*|}"
   [ "$internet_source" = "$internet_target" ] && internet_source=""
   public_ip=""
-  public_ip_status="$([ "$internet_status" = "ok" ] && echo "not_checked" || echo "internet_unavailable")"
+  public_ip_status="not_checked"
   public_ip_source=""
-  if [ "$internet_status" = "ok" ]; then
+  if [ -n "$ifname" ] && [ -n "$ipaddr" ]; then
     public_ip_probe="$(public_ip_for_ifname "$ifname" "$table" "$nvram_idx")"
     public_ip="\${public_ip_probe%%|*}"
     public_ip_rest="\${public_ip_probe#*|}"
@@ -994,12 +982,13 @@ tail -n 120 /tmp/smartwan.log 2>/dev/null || true
   const configValues = parseSmartwanConfig(sections.smartwan_config || '');
   const status = parseKeyValueBlock(sections.smartwan_status);
   const dualWan = parseAsusDualWanStatus(sections.asus_dualwan);
-  const probedWanStatus = await enrichWanStatusWithPanelPublicIps(
+  const panelEnrichedWanStatus = await enrichWanStatusWithPanelPublicIps(
     withDualWanRoles(parseWanStatus(sections.wan_status), dualWan),
     status,
     sections.routes,
     dualWan,
   );
+  const probedWanStatus = await applyWanPublicIpHistory(panelEnrichedWanStatus);
   // During emergency routing a lower-priority diagnostic probe can itself be
   // carried by the healthy WAN and report a false positive for the failed
   // interface. The lifetime watchdog uses dedicated priority-80 probes and is

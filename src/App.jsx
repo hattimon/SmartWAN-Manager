@@ -1417,7 +1417,7 @@ function NetworkMapPanel({ t, routerState, configForm, uiMode, soundEnabled, onN
           <MapNode
             icon={Cloud}
             title={`${wan0.label || 'WAN0'} / ${wan0.asusPort || 'WAN0'}`}
-            subtitle={`${t('publicIp')}: ${wan0.publicIp || t('unavailable')}`}
+            subtitle={`${t('publicIp')}: ${wan0.publicIp || t('unavailable')}${wan0.publicIpStale ? ` · ${t('publicIpLastConfirmed')}` : ''}`}
             meta={`${wan0.ipaddr || t('noWanIp')} · ${wan0.gateway || t('noGateway')}`}
             detail={`${t('upstreamDns')}: ${formatWanDns(wan0)} (${dnsModeLabel(wan0.dnsMode)})`}
             tone="cyan"
@@ -1427,7 +1427,7 @@ function NetworkMapPanel({ t, routerState, configForm, uiMode, soundEnabled, onN
           <MapNode
             icon={Cloud}
             title={`${wan1.label || 'WAN1'} / ${wan1.asusPort || 'WAN1'}`}
-            subtitle={`${t('publicIp')}: ${wan1.publicIp || t('unavailable')}`}
+            subtitle={`${t('publicIp')}: ${wan1.publicIp || t('unavailable')}${wan1.publicIpStale ? ` · ${t('publicIpLastConfirmed')}` : ''}`}
             meta={`${wan1.ipaddr || t('noWanIp')} · ${wan1.gateway || t('noGateway')}`}
             detail={`${t('upstreamDns')}: ${formatWanDns(wan1)} (${dnsModeLabel(wan1.dnsMode)})`}
             tone="blue"
@@ -4457,6 +4457,7 @@ function publicIpLabel(wan, t) {
 }
 
 function publicIpSourceLabel(source, t) {
+  if (source === 'panel:last-confirmed') return t('publicIpLastConfirmed');
   if (source === 'panel:default-route') return t('publicIpPanelDefault');
   if (source === 'panel:google-policy') return t('publicIpPanelGoogle');
   if (source?.startsWith('nvram:')) return t('publicIpRouterNvram');
@@ -4544,7 +4545,14 @@ function WanOverviewPanel({ t, wanStatus, status }) {
                 <span>
                   {t('publicIp')}
                   <strong>{publicIpLabel(wan, t)}</strong>
-                  {wan.publicIpSource ? <small>{publicIpSourceLabel(wan.publicIpSource, t)}</small> : null}
+                  {wan.publicIpSource ? (
+                    <small>
+                      {publicIpSourceLabel(wan.publicIpSource, t)}
+                      {wan.publicIpStale && wan.publicIpConfirmedAt
+                        ? ` · ${new Date(wan.publicIpConfirmedAt).toLocaleString()}`
+                        : ''}
+                    </small>
+                  ) : null}
                 </span>
                 <span>{t('gateway')} <strong>{wan.gateway || 'n/a'}</strong></span>
                 <span>

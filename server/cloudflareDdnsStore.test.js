@@ -28,3 +28,14 @@ test('Cloudflare DDNS falls back to the remaining online WAN', () => {
   };
   assert.equal(selectDdnsWan(degraded, 'wan0')?.id, 'wan1');
 });
+
+test('Cloudflare DDNS never publishes a last-confirmed stale WAN address', () => {
+  const stateWithStaleIp = {
+    status: { active_default_wan: 'wan1' },
+    wanStatus: [
+      { id: 'wan0', internetStatus: 'ok', publicIp: '150.228.91.90' },
+      { id: 'wan1', internetStatus: 'ok', publicIp: '91.197.91.141', publicIpStale: true },
+    ],
+  };
+  assert.equal(selectDdnsWan(stateWithStaleIp, 'auto')?.id, 'wan0');
+});
