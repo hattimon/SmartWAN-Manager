@@ -162,6 +162,69 @@ test('applies a new outage event immediately to a cached healthy router state', 
   assert.equal(routing.outageKind, '');
 });
 
+test('an active failover overrides a static device rule pointing at the failed WAN', () => {
+  const failoverState = applyActiveOutages({
+    ...state,
+    status: {
+      ...state.status,
+      failover_override_active: '1',
+      active_default_wan: 'wan0',
+      watchdog_state_failed_wan: 'wan1',
+    },
+    dualWan: {
+      ...state.dualWan,
+      raw: {
+        wans_routing_rulelist:
+          '<192.168.1.50>0.0.0.0/1>1<192.168.1.50>128.0.0.0/1>1',
+      },
+    },
+  }, [{
+    id: 'router-outage-wan1',
+    wanId: 'wan1',
+    activeWan: 'wan0',
+    startedAt: '2026-08-10T13:57:14.000Z',
+    outageKind: 'partial',
+    failureReason: 'https_timeout',
+    failureDetail: 'ICMP works, but HTTPS probes timed out',
+  }]);
+
+  const viewer = buildViewerRouting(failoverState, '192.168.1.50');
+  const routing = buildRoutingSummary(failoverState);
+  assert.equal(viewer.routingMode, 'failover');
+  assert.equal(viewer.routingRuleSource, 'asus-dualwan-full-traffic');
+  assert.equal(viewer.assignedWan, 'wan0');
+  assert.match(viewer.assignedWanLabel, /Fiber/);
+  assert.equal(routing.outageKind, 'partial');
+  assert.equal(routing.failureReason, 'https_timeout');
+});
+
+test('confirmed active outage classification overrides a fluctuating later probe', () => {
+  const effectiveState = applyActiveOutages({
+    ...state,
+    status: {
+      ...state.status,
+      failover_override_active: '1',
+      active_default_wan: 'wan0',
+      watchdog_state_failed_wan: 'wan1',
+      watchdog_state_failure_kind: 'complete',
+      watchdog_state_failure_reason: 'internet_unreachable',
+      watchdog_state_failure_detail: 'A later ICMP and service probe failed',
+    },
+  }, [{
+    id: 'router-outage-wan1',
+    wanId: 'wan1',
+    activeWan: 'wan0',
+    startedAt: '2026-08-10T13:57:14.000Z',
+    outageKind: 'partial',
+    failureReason: 'https_timeout',
+    failureDetail: 'ICMP works, but Internet service probes failed',
+  }]);
+
+  assert.equal(effectiveState.status.watchdog_state_failure_kind, 'partial');
+  assert.equal(effectiveState.status.watchdog_state_failure_reason, 'https_timeout');
+  assert.match(effectiveState.status.watchdog_state_failure_detail, /ICMP works/);
+});
+
 test('publishes partial-failure diagnostics for the login panel and Aurelka', () => {
   const failoverState = {
     ...state,

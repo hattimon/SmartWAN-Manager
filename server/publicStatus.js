@@ -192,10 +192,14 @@ export function buildViewerRouting(state, clientIp) {
     routingMode,
     failoverConfigured,
     routingRuleSource: explicitRule?.source || '',
-    assignedWan: noInternet ? '' : ruleWan?.id || activeWan?.id || '',
+    assignedWan: noInternet ? '' : failoverActive ? activeWan?.id || '' : ruleWan?.id || activeWan?.id || '',
     assignedWanLabel: noInternet
       ? ''
-      : ruleWan
+      : failoverActive
+        ? activeWan?.id
+          ? wanName(activeWan)
+          : ''
+        : ruleWan
         ? wanName(ruleWan)
         : activeWan?.id
           ? wanName(activeWan)

@@ -331,3 +331,30 @@ test('public Google location status is hidden until monitoring is enabled', () =
   assert.equal(visible.countryName, 'Polska');
   assert.equal(visible.alternativeRoutingActive, true);
 });
+
+test('public Google location follows the effective WAN during full failover', () => {
+  const visible = buildGoogleLocationPublicStatus({
+    enabled: true,
+    configured: true,
+    preferredCountryCode: 'PL',
+    preferredCountryName: 'Polska',
+    temporaryRoutingActive: true,
+    lastAppliedWan: 'wan1',
+    lastResult: { previousWan: 'wan1' },
+    lastKnownLocations: {
+      wan0: { countryCode: 'PL', countryName: 'Poland', cityName: 'Warsaw' },
+      wan1: { countryCode: 'PL', countryName: 'Poland', cityName: 'Sycow' },
+    },
+  }, { assignedWan: 'wan0' }, {
+    failoverActive: true,
+    activeWan: 'wan0',
+  }, [
+    { id: 'wan0', label: 'Starlink' },
+    { id: 'wan1', label: 'eDial' },
+  ]);
+
+  assert.equal(visible.wan, 'wan0');
+  assert.equal(visible.wanLabel, 'Starlink');
+  assert.equal(visible.countryName, 'Polska');
+  assert.equal(visible.alternativeRoutingActive, false);
+});

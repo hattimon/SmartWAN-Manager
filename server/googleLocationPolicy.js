@@ -510,9 +510,15 @@ export function buildGoogleLocationPublicStatus(
 ) {
   if (!policy.enabled || !policy.configured) return { visible: false };
   const result = policy.lastResult || {};
-  const routingWan = policy.temporaryRoutingActive
-    ? policy.lastAppliedWan || result.routingWan || result.targetWan || ''
-    : result.previousWan || viewer.assignedWan || routing.activeWan || result.targetWan || '';
+  // A full-WAN emergency override has higher priority than device and Google
+  // policy rules. Report the effective path, not the normally assigned WAN.
+  const failoverActive = routing.failoverActive === true;
+  const alternativeRoutingActive = !failoverActive && policy.temporaryRoutingActive === true;
+  const routingWan = failoverActive
+    ? routing.activeWan || viewer.assignedWan || ''
+    : alternativeRoutingActive
+      ? policy.lastAppliedWan || result.routingWan || result.targetWan || ''
+      : viewer.assignedWan || routing.activeWan || result.previousWan || result.targetWan || '';
   const liveWan = wanStatus.find((wan) => wan.id === routingWan) || {};
   const location = policy.lastKnownLocations?.[routingWan] || null;
   const countryName = location?.countryCode
@@ -530,7 +536,7 @@ export function buildGoogleLocationPublicStatus(
     countryName,
     cityName: location?.cityName || '',
     checkedAt: location?.detectedAt || policy.lastCheckAt || '',
-    alternativeRoutingActive: policy.temporaryRoutingActive === true,
+    alternativeRoutingActive,
   };
 }
 

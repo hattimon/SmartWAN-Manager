@@ -1075,7 +1075,18 @@ app.post(
 app.get(
   '/api/router/state',
   asyncRoute(async (_req, res) => {
-    res.json(await probeRouter(await routerSettings()));
+    const state = await probeRouter(await routerSettings());
+    if (state?.status?.failover_override_active !== '1') {
+      res.json(state);
+      return;
+    }
+
+    // The event that activated the current failover is the stable source for
+    // its failure kind and diagnosis. Later probes can fluctuate after routes
+    // have already been overridden, so every authenticated view must use the
+    // same confirmed outage classification as the login/public status.
+    const events = await listWanEvents();
+    res.json(applyActiveOutages(state, Object.values(events.activeOutages || {})));
   }),
 );
 
