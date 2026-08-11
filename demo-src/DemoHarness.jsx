@@ -34,12 +34,15 @@ function copyFor(language) {
 
 export default function DemoHarness() {
   const [snapshot, setSnapshot] = useState(() => demoBackend.getSnapshot());
-  const [appRevision, setAppRevision] = useState(0);
 
-  useEffect(() => demoBackend.subscribe((next, kind) => {
+  useEffect(() => demoBackend.subscribe((next) => {
     setSnapshot(next);
-    if (kind === 'scenario') setAppRevision((revision) => revision + 1);
   }), []);
+
+  const runScenario = (target) => {
+    window.dispatchEvent(new Event('smartwan:aurelka-audio-prime'));
+    demoBackend.runScenario(target);
+  };
 
   const copy = copyFor(snapshot.language);
   const statusCopy = copy[snapshot.phase] || copy.healthy;
@@ -51,7 +54,7 @@ export default function DemoHarness() {
 
   return (
     <div className="demo-harness">
-      <App key={appRevision} />
+      <App />
       <aside className={`demo-controller phase-${snapshot.phase}`} aria-label={copy.title}>
         <details>
           <summary>
@@ -65,9 +68,9 @@ export default function DemoHarness() {
           <div className="demo-controller-body">
             <p><StatusIcon size={15} />{statusCopy}</p>
             <div>
-              <button type="button" onClick={() => demoBackend.runScenario('wan0')}>{copy.wan0}</button>
-              <button type="button" onClick={() => demoBackend.runScenario('wan1')}>{copy.wan1}</button>
-              <button type="button" onClick={() => demoBackend.runScenario('both')}>{copy.both}</button>
+              <button type="button" onClick={() => runScenario('wan0')}>{copy.wan0}</button>
+              <button type="button" onClick={() => runScenario('wan1')}>{copy.wan1}</button>
+              <button type="button" onClick={() => runScenario('both')}>{copy.both}</button>
               <button type="button" className="secondary" onClick={demoBackend.resetScenario}>{copy.reset}</button>
             </div>
           </div>

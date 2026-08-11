@@ -122,6 +122,9 @@ function clone(value) {
 function notify(kind = 'state') {
   const snapshot = getSnapshot();
   demoStore.listeners.forEach((listener) => listener(snapshot, kind));
+  if (kind === 'scenario') {
+    window.dispatchEvent(new Event('smartwan:public-map-refresh'));
+  }
 }
 
 function getSnapshot() {

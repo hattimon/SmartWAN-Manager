@@ -45,7 +45,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from './api.js';
-import { selectAurelkaMeowFile } from './aurelkaAudio.js';
+import { AURELKA_MEOW_FILES, selectAurelkaMeowFile } from './aurelkaAudio.js';
 import { createTranslator, languages } from './i18n.js';
 import { buildGoogleYoutubeGeminiDualWanRules, googleYoutubeGeminiCidrs } from './dualWanRuleTemplates.js';
 import DualWanServiceRouting from './DualWanServiceRouting.jsx';
@@ -466,11 +466,17 @@ function App() {
         }
       }
     };
+    const refreshFromPanelEvent = () => {
+      window.clearTimeout(timer);
+      void refresh();
+    };
     setPublicMapBusy(true);
     void refresh();
+    window.addEventListener('smartwan:public-map-refresh', refreshFromPanelEvent);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.removeEventListener('smartwan:public-map-refresh', refreshFromPanelEvent);
     };
   }, [auth.checked, auth.authenticated, t]);
 
@@ -3146,6 +3152,7 @@ function LoginCatMascot({
   const dragRef = useRef({ pointerId: null, moved: false, startX: 0, startY: 0 });
   const aurelkaWorldRef = useRef(null);
   const meowAudioRef = useRef(new Map());
+  const audioPrimePendingRef = useRef(false);
   const knockAudioContextRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const notificationStateRef = useRef({
@@ -3272,7 +3279,7 @@ function LoginCatMascot({
   }, [aurelkaAnimationEnabled, aurelkaSoundEnabled, preferencesReady]);
 
   const meow = async () => {
-    if (!aurelkaSoundEnabled) return;
+    if (!aurelkaSoundEnabled) return false;
     const fileName = selectAurelkaMeowFile(failedWanCount);
     const audioPath = `${import.meta.env.BASE_URL}audio/${fileName}`;
     const audio = meowAudioRef.current.get(fileName) || new Audio(audioPath);
@@ -3288,10 +3295,51 @@ function LoginCatMascot({
     try {
       await audio.play();
       audioUnlockedRef.current = true;
+      return true;
     } catch {
       // Browsers may block sound until the first deliberate interaction.
+      return false;
     }
   };
+
+  useEffect(() => {
+    const primeOutageAudio = () => {
+      if (!aurelkaSoundEnabled || audioUnlockedRef.current || audioPrimePendingRef.current) return;
+      audioPrimePendingRef.current = true;
+      const attempts = AURELKA_MEOW_FILES.map((fileName) => {
+        const audioPath = `${import.meta.env.BASE_URL}audio/${fileName}`;
+        const audio = meowAudioRef.current.get(fileName) || new Audio(audioPath);
+        meowAudioRef.current.set(fileName, audio);
+        audio.preload = 'auto';
+        audio.muted = true;
+        audio.currentTime = 0;
+        return audio.play()
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.muted = false;
+            return true;
+          })
+          .catch(() => {
+            audio.muted = false;
+            return false;
+          });
+      });
+      void Promise.all(attempts).then((results) => {
+        if (results.some(Boolean)) audioUnlockedRef.current = true;
+        audioPrimePendingRef.current = false;
+      });
+    };
+    const primeFromInteraction = () => primeOutageAudio();
+    window.addEventListener('smartwan:aurelka-audio-prime', primeOutageAudio);
+    window.addEventListener('pointerdown', primeFromInteraction, { capture: true, once: true });
+    window.addEventListener('keydown', primeFromInteraction, { capture: true, once: true });
+    return () => {
+      window.removeEventListener('smartwan:aurelka-audio-prime', primeOutageAudio);
+      window.removeEventListener('pointerdown', primeFromInteraction, true);
+      window.removeEventListener('keydown', primeFromInteraction, true);
+    };
+  }, [aurelkaSoundEnabled]);
 
   const playBulbKnock = async () => {
     if (!aurelkaSoundEnabled) return false;
@@ -3412,21 +3460,31 @@ function LoginCatMascot({
     if (networkMood !== 'outage' || !aurelkaSoundEnabled) return undefined;
     let started = false;
     let reminderTimer = 0;
-    const startOutageMeows = () => {
+    let waitingForInteraction = true;
+    const startOutageMeows = async () => {
       if (started) return;
       started = true;
-      void meow();
+      const played = await meow();
+      if (!played) {
+        started = false;
+        return;
+      }
+      waitingForInteraction = false;
+      window.removeEventListener('pointerdown', startAfterInteraction);
+      window.removeEventListener('keydown', startAfterInteraction);
       reminderTimer = window.setInterval(() => void meow(), 30_000);
     };
-    if (audioUnlockedRef.current) {
-      startOutageMeows();
-    } else {
-      window.addEventListener('pointerdown', startOutageMeows, { once: true });
-      window.addEventListener('keydown', startOutageMeows, { once: true });
-    }
+    const startAfterInteraction = () => {
+      if (!waitingForInteraction) return;
+      void startOutageMeows();
+    };
+    window.addEventListener('pointerdown', startAfterInteraction, { once: true });
+    window.addEventListener('keydown', startAfterInteraction, { once: true });
+    void startOutageMeows();
     return () => {
-      window.removeEventListener('pointerdown', startOutageMeows);
-      window.removeEventListener('keydown', startOutageMeows);
+      waitingForInteraction = false;
+      window.removeEventListener('pointerdown', startAfterInteraction);
+      window.removeEventListener('keydown', startAfterInteraction);
       window.clearInterval(reminderTimer);
     };
   }, [aurelkaSoundEnabled, failedWanCount, networkMood]);

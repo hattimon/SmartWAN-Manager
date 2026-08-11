@@ -1,5 +1,9 @@
 export const AURELKA_MEOW_DECISIVE = 'aurelka-meow-decisive.mp3';
 export const AURELKA_MEOW_GENTLE = 'aurelka-meow-gentle.mp3';
+export const AURELKA_MEOW_FILES = Object.freeze([
+  AURELKA_MEOW_DECISIVE,
+  AURELKA_MEOW_GENTLE,
+]);
 
 export function selectAurelkaMeowFile(failedWanCount, randomValue = Math.random()) {
   const failures = Number.isFinite(Number(failedWanCount))
