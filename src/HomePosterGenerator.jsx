@@ -55,15 +55,15 @@ const uiCopy = {
 
 const posterText = {
   en: {
-    status: 'Internet is running great! All WANs are purring 🐱',
+    status: 'Internet is up! All WANs are purring 🐱',
     tagline: 'Your home. Your network. Full control.',
     information: [
-      [{ text: 'Current internet ' }, { text: 'status', color: '#93f878' }],
-      [{ text: 'and ' }, { text: 'configuration', color: '#93f878' }, { text: ' or ' }, { text: 'outage', color: '#93f878' }],
-      [{ text: 'details are in the panel' }],
+      [{ text: 'Internet ' }, { text: 'status', color: '#93f878' }, { text: ', settings' }],
+      [{ text: 'and ' }, { text: 'outage details', color: '#93f878' }],
+      [{ text: 'are shown in the panel' }],
     ],
-    scan: ['Scan the code,', 'to open the', 'home panel'],
-    footer: 'For our home, always online.',
+    scan: ['Scan to open', 'your home', 'panel'],
+    footer: 'Always online at home.',
   },
 };
 
@@ -158,7 +158,7 @@ function drawEnglishCopy(ctx) {
 
   roundedRect(ctx, 126, 493, 522, 176, 18, 'rgba(5, 25, 30, 0.99)');
   copy.information.forEach((line, index) => {
-    drawCenteredSegments(ctx, line, 387, 535 + index * 52, 490);
+    drawCenteredSegments(ctx, line, 387, 535 + index * 52, 440);
   });
 
   roundedRect(ctx, 742, 548, 276, 151, 32, 'rgba(5, 24, 29, 0.99)');
@@ -172,7 +172,7 @@ function drawEnglishCopy(ctx) {
   });
 
   roundedRect(ctx, 300, 1317, 535, 49, 10, 'rgba(3, 20, 25, 0.98)');
-  drawCenteredLine(ctx, `♥  ${copy.footer}`, 568, 1342, 500, {
+  drawCenteredLine(ctx, `♥  ${copy.footer}`, 568, 1342, 470, {
     color: '#8399a0',
     maxSize: 26,
     minSize: 19,
