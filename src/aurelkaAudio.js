@@ -1,9 +1,18 @@
 export const AURELKA_MEOW_DECISIVE = 'aurelka-meow-decisive.mp3';
 export const AURELKA_MEOW_GENTLE = 'aurelka-meow-gentle.mp3';
+export const AURELKA_PURR_RELAXING = 'aurelka-purr-relaxing.mp3';
 export const AURELKA_MEOW_FILES = Object.freeze([
   AURELKA_MEOW_DECISIVE,
   AURELKA_MEOW_GENTLE,
 ]);
+export const AURELKA_AUDIO_FILES = Object.freeze([
+  ...AURELKA_MEOW_FILES,
+  AURELKA_PURR_RELAXING,
+]);
+
+export function shouldPlayAurelkaPurr(networkMood, soundEnabled) {
+  return networkMood === 'happy' && soundEnabled === true;
+}
 
 export function selectAurelkaMeowFile(failedWanCount, randomValue = Math.random()) {
   const failures = Number.isFinite(Number(failedWanCount))

@@ -173,8 +173,9 @@
           <p>
             Each eye represents one WAN. Green means healthy; orange means checking, stale or missing data, or recovery
             confirmation; red means that WAN is down. Aurelka identifies the failed link, changes her expression and bulb,
-            and—when sound is enabled—meows twice and repeats every 30 seconds during an outage. New local messages and WAN
-            state changes also pulse the notification bulb.
+            and—when sound is enabled—quietly purrs while both WANs are healthy. The purr fades out during checking or an
+            outage; Aurelka then meows twice and repeats every 30 seconds. New local messages and WAN state changes also
+            pulse the notification bulb.
           </p>
         </section>
 
@@ -379,8 +380,9 @@ docker compose exec smartwan-manager node server/setPanelPassword.js admin 'repl
           <p>
             Każde oko odpowiada jednemu WAN-owi. Zielone oznacza sprawne łącze; pomarańczowe — sprawdzanie, nieaktualne lub
             brakujące dane albo potwierdzanie powrotu; czerwone — awarię danego WAN-u. Aurelka wskazuje uszkodzone łącze,
-            zmienia wyraz i kolor żarówki, a przy włączonym dźwięku miauczy dwa razy i powtarza alarm co 30 sekund.
-            Nowe lokalne wiadomości i zmiany stanu WAN również uruchamiają pulsowanie żarówki.
+            zmienia wyraz i kolor żarówki, a przy włączonym dźwięku cicho mruczy, gdy oba WAN-y są sprawne. Mruczenie zanika
+            podczas sprawdzania lub awarii; Aurelka wtedy miauczy dwa razy i powtarza alarm co 30 sekund. Nowe lokalne
+            wiadomości i zmiany stanu WAN również uruchamiają pulsowanie żarówki.
           </p>
         </section>
 

@@ -76,12 +76,12 @@ Aurelka's left and right eyes represent `wan0` and `wan1` independently:
 
 | Eyes | Meaning | Behaviour and notifications |
 |---|---|---|
-| Green | The represented WAN is healthy | Aurelka is calm; the status bubble reports that all links are working. |
+| Green | The represented WAN is healthy | Aurelka is calm; when both links are healthy and sound is enabled, a quiet relaxing purr fades in and loops in the background. |
 | Orange | The panel is reading status, data is stale/missing, or a failed WAN is in recovery confirmation | Eyes pulse while Aurelka checks the links; the bulb uses warning orange. |
 | One red, one green | One WAN is down and the other remains available | Aurelka becomes alert, identifies the failed WAN, meows twice, then repeats every 30 seconds while the outage continues. |
 | Both red | Both WAN links are down | Red alarm state, angry animation, danger bulb, and repeated audible alert when sound is enabled. |
 
-The bulb pulses when WAN state changes or a new local Aurelka message arrives. Browsers may delay sound until the first user interaction. Aurelka can be clicked to show status and the five newest local messages, dragged around the login page, double-clicked to resume her route, muted, or paused. Messages are stored in the private Docker data volume, are rate-limited, and are available only through the trusted-network public endpoints.
+The purr fades out as soon as a link is being checked or fails, so it never masks an outage alert. The bulb pulses when WAN state changes or a new local Aurelka message arrives. Browsers may delay sound until the first user interaction. Aurelka can be clicked to show status and the five newest local messages, dragged around the login page, double-clicked to resume her route, muted, or paused. Messages are stored in the private Docker data volume, are rate-limited, and are available only through the trusted-network public endpoints.
 
 ### Suggested requirements
 
@@ -408,12 +408,12 @@ Lewe i prawe oko Aurelki odpowiadają niezależnie za `wan0` i `wan1`:
 
 | Oczy | Znaczenie | Zachowanie i powiadomienia |
 |---|---|---|
-| Zielone | Dany WAN jest sprawny | Aurelka jest spokojna, a dymek informuje, że łącza działają. |
+| Zielone | Dany WAN jest sprawny | Aurelka jest spokojna; gdy oba łącza działają i dźwięk jest włączony, w tle łagodnie pojawia się ciche, relaksacyjne mruczenie. |
 | Pomarańczowe | Panel odczytuje stan, dane są nieaktualne/brakujące albo odzyskane łącze czeka na potwierdzenie powrotu | Oczy pulsują podczas sprawdzania; żarówka przyjmuje pomarańczowy stan ostrzegawczy. |
 | Jedno czerwone, drugie zielone | Jeden WAN nie działa, a drugi jest dostępny | Aurelka wskazuje nazwę uszkodzonego WAN-u, miauczy dwa razy, a następnie co 30 sekund przypomina o trwającej awarii. |
 | Oba czerwone | Oba WAN-y nie działają | Czerwony alarm, zła animacja, czerwona żarówka i powtarzane powiadomienie dźwiękowe, jeśli dźwięk jest włączony. |
 
-Żarówka pulsuje po zmianie stanu WAN albo pojawieniu się nowej lokalnej wiadomości. Przeglądarka może odblokować dźwięk dopiero po pierwszej interakcji użytkownika. Aurelka pokazuje stan i pięć najnowszych wiadomości, daje się przeciągać, wraca na trasę po podwójnym kliknięciu, może zostać wyciszona lub zatrzymana. Wiadomości są zapisywane w woluminie Dockera, mają ograniczenie częstotliwości i są udostępniane tylko przez endpointy dla zaufanej sieci.
+Mruczenie wycisza się natychmiast po rozpoczęciu sprawdzania albo wykryciu awarii, dlatego nie zasłania alarmu. Żarówka pulsuje po zmianie stanu WAN albo pojawieniu się nowej lokalnej wiadomości. Przeglądarka może odblokować dźwięk dopiero po pierwszej interakcji użytkownika. Aurelka pokazuje stan i pięć najnowszych wiadomości, daje się przeciągać, wraca na trasę po podwójnym kliknięciu, może zostać wyciszona lub zatrzymana. Wiadomości są zapisywane w woluminie Dockera, mają ograniczenie częstotliwości i są udostępniane tylko przez endpointy dla zaufanej sieci.
 
 ### Sugerowane wymagania
 

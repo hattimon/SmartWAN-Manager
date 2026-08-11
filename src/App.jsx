@@ -45,7 +45,12 @@ import {
   X,
 } from 'lucide-react';
 import { api } from './api.js';
-import { AURELKA_MEOW_FILES, selectAurelkaMeowFile } from './aurelkaAudio.js';
+import {
+  AURELKA_MEOW_FILES,
+  AURELKA_PURR_RELAXING,
+  selectAurelkaMeowFile,
+  shouldPlayAurelkaPurr,
+} from './aurelkaAudio.js';
 import { createTranslator, languages } from './i18n.js';
 import { buildGoogleYoutubeGeminiDualWanRules, googleYoutubeGeminiCidrs } from './dualWanRuleTemplates.js';
 import DualWanServiceRouting from './DualWanServiceRouting.jsx';
@@ -3153,6 +3158,8 @@ function LoginCatMascot({
   const dragRef = useRef({ pointerId: null, moved: false, startX: 0, startY: 0 });
   const aurelkaWorldRef = useRef(null);
   const meowAudioRef = useRef(new Map());
+  const purrAudioRef = useRef(null);
+  const purrFadeTimerRef = useRef(0);
   const audioPrimePendingRef = useRef(false);
   const knockAudioContextRef = useRef(null);
   const audioUnlockedRef = useRef(false);
@@ -3194,6 +3201,8 @@ function LoginCatMascot({
         audio.currentTime = 0;
       });
       meowAudioRef.current.clear();
+      purrAudioRef.current = null;
+      window.clearInterval(purrFadeTimerRef.current);
       if (knockAudioContextRef.current) {
         void knockAudioContextRef.current.close().catch(() => undefined);
         knockAudioContextRef.current = null;
@@ -3285,8 +3294,9 @@ function LoginCatMascot({
     const audioPath = `${import.meta.env.BASE_URL}audio/${fileName}`;
     const audio = meowAudioRef.current.get(fileName) || new Audio(audioPath);
     meowAudioRef.current.set(fileName, audio);
-    meowAudioRef.current.forEach((otherAudio) => {
+    meowAudioRef.current.forEach((otherAudio, otherFileName) => {
       if (otherAudio === audio) return;
+      if (otherFileName === AURELKA_PURR_RELAXING) return;
       otherAudio.pause();
       otherAudio.currentTime = 0;
     });
@@ -3305,7 +3315,7 @@ function LoginCatMascot({
 
   useEffect(() => {
     const primeOutageAudio = () => {
-      if (!aurelkaSoundEnabled || audioUnlockedRef.current || audioPrimePendingRef.current) return;
+      if (audioUnlockedRef.current || audioPrimePendingRef.current) return;
       audioPrimePendingRef.current = true;
       const attempts = AURELKA_MEOW_FILES.map((fileName) => {
         const audioPath = `${import.meta.env.BASE_URL}audio/${fileName}`;
@@ -3341,6 +3351,83 @@ function LoginCatMascot({
       window.removeEventListener('keydown', primeFromInteraction, true);
     };
   }, [aurelkaSoundEnabled]);
+
+  useEffect(() => {
+    const audioPath = `${import.meta.env.BASE_URL}audio/${AURELKA_PURR_RELAXING}`;
+    const audio = purrAudioRef.current
+      || meowAudioRef.current.get(AURELKA_PURR_RELAXING)
+      || new Audio(audioPath);
+    purrAudioRef.current = audio;
+    meowAudioRef.current.set(AURELKA_PURR_RELAXING, audio);
+    audio.preload = 'auto';
+    audio.loop = true;
+    const targetVolume = 0.16;
+    const purrShouldPlay = shouldPlayAurelkaPurr(networkMood, aurelkaSoundEnabled);
+    let starting = false;
+
+    const fadeTo = (target, duration, pauseWhenSilent = false) => {
+      window.clearInterval(purrFadeTimerRef.current);
+      purrFadeTimerRef.current = 0;
+      const initialVolume = Number.isFinite(audio.volume) ? audio.volume : 0;
+      if (duration <= 0 || Math.abs(initialVolume - target) < 0.005) {
+        audio.volume = target;
+        if (pauseWhenSilent && target === 0) audio.pause();
+        return;
+      }
+      const startedAt = performance.now();
+      purrFadeTimerRef.current = window.setInterval(() => {
+        const progress = Math.min(1, (performance.now() - startedAt) / duration);
+        audio.volume = initialVolume + ((target - initialVolume) * progress);
+        if (progress < 1) return;
+        window.clearInterval(purrFadeTimerRef.current);
+        purrFadeTimerRef.current = 0;
+        if (pauseWhenSilent && target === 0) audio.pause();
+      }, 50);
+    };
+
+    const removeStartListeners = () => {
+      window.removeEventListener('smartwan:aurelka-audio-prime', startPurr);
+      window.removeEventListener('pointerdown', startPurr, true);
+      window.removeEventListener('keydown', startPurr, true);
+    };
+
+    async function startPurr() {
+      if (!purrShouldPlay || starting) return false;
+      if (!audio.paused) {
+        fadeTo(targetVolume, 1200);
+        removeStartListeners();
+        return true;
+      }
+      starting = true;
+      audio.loop = true;
+      audio.volume = 0;
+      try {
+        await audio.play();
+        audioUnlockedRef.current = true;
+        fadeTo(targetVolume, 1600);
+        removeStartListeners();
+        return true;
+      } catch {
+        return false;
+      } finally {
+        starting = false;
+      }
+    }
+
+    if (purrShouldPlay) {
+      window.addEventListener('smartwan:aurelka-audio-prime', startPurr);
+      window.addEventListener('pointerdown', startPurr, { capture: true });
+      window.addEventListener('keydown', startPurr, { capture: true });
+      void startPurr();
+    } else {
+      fadeTo(0, 700, true);
+    }
+
+    return () => {
+      removeStartListeners();
+      if (purrShouldPlay && !audio.paused) fadeTo(0, 700, true);
+    };
+  }, [aurelkaSoundEnabled, networkMood]);
 
   const playBulbKnock = async () => {
     if (!aurelkaSoundEnabled) return false;

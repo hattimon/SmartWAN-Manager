@@ -10,7 +10,10 @@ import {
   normalizePanelAddress,
 } from './homePoster.js';
 
-const posterTemplateUrl = `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template.png`;
+const posterTemplateUrls = Object.freeze({
+  en: `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template-en-clean.png`,
+  pl: `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template.png`,
+});
 const posterQrSize = 346;
 const posterQrPanel = { x: 181, y: 709, width: 412, height: 392 };
 
@@ -55,7 +58,7 @@ const uiCopy = {
 
 const posterText = {
   en: {
-    status: 'Internet is up! All WANs are purring 🐱',
+    status: 'Internet is up! All WANs are purring',
     tagline: 'Your home. Your network. Full control.',
     information: [
       [{ text: 'Internet ' }, { text: 'status', color: '#93f878' }, { text: ', settings' }],
@@ -67,7 +70,7 @@ const posterText = {
   },
 };
 
-let posterImagePromise;
+const posterImagePromises = new Map();
 
 function loadImage(source) {
   return new Promise((resolve, reject) => {
@@ -78,11 +81,12 @@ function loadImage(source) {
   });
 }
 
-function loadPosterImage() {
-  if (!posterImagePromise) {
-    posterImagePromise = loadImage(posterTemplateUrl);
+function loadPosterImage(language) {
+  const selectedLanguage = language === 'en' ? 'en' : 'pl';
+  if (!posterImagePromises.has(selectedLanguage)) {
+    posterImagePromises.set(selectedLanguage, loadImage(posterTemplateUrls[selectedLanguage]));
   }
-  return posterImagePromise;
+  return posterImagePromises.get(selectedLanguage);
 }
 
 function roundedRect(ctx, x, y, width, height, radius, fill) {
@@ -140,15 +144,13 @@ function drawCenteredSegments(ctx, segments, centerX, y, maxWidth) {
 function drawEnglishCopy(ctx) {
   const copy = posterText.en;
 
-  roundedRect(ctx, 244, 77, 642, 62, 31, 'rgba(5, 23, 28, 0.98)');
-  drawCenteredLine(ctx, copy.status, 565, 108, 610, {
+  drawCenteredLine(ctx, copy.status, 565, 108, 480, {
     color: '#9bf77b',
     maxSize: 28,
     minSize: 21,
     glow: 'rgba(77, 255, 105, 0.65)',
   });
 
-  roundedRect(ctx, 275, 344, 575, 58, 6, 'rgba(3, 20, 25, 0.98)');
   drawCenteredLine(ctx, copy.tagline, 562, 376, 550, {
     color: '#91a6ae',
     maxSize: 29,
@@ -156,12 +158,10 @@ function drawEnglishCopy(ctx) {
     weight: 700,
   });
 
-  roundedRect(ctx, 126, 493, 522, 176, 18, 'rgba(5, 25, 30, 0.99)');
   copy.information.forEach((line, index) => {
     drawCenteredSegments(ctx, line, 387, 535 + index * 52, 440);
   });
 
-  roundedRect(ctx, 742, 548, 276, 151, 32, 'rgba(5, 24, 29, 0.99)');
   copy.scan.forEach((line, index) => {
     drawCenteredLine(ctx, line, 880, 583 + index * 43, 252, {
       color: index === 0 ? '#9bf77b' : '#f4f2eb',
@@ -171,8 +171,7 @@ function drawEnglishCopy(ctx) {
     });
   });
 
-  roundedRect(ctx, 300, 1317, 535, 49, 10, 'rgba(3, 20, 25, 0.98)');
-  drawCenteredLine(ctx, `♥  ${copy.footer}`, 568, 1342, 470, {
+  drawCenteredLine(ctx, copy.footer, 593, 1342, 420, {
     color: '#8399a0',
     maxSize: 26,
     minSize: 19,
@@ -180,8 +179,10 @@ function drawEnglishCopy(ctx) {
   });
 }
 
-function drawAddress(ctx, address) {
-  roundedRect(ctx, 321, 1224, 585, 74, 16, 'rgba(4, 24, 29, 0.99)');
+function drawAddress(ctx, address, language) {
+  if (language !== 'en') {
+    roundedRect(ctx, 321, 1224, 585, 74, 16, 'rgba(4, 24, 29, 0.99)');
+  }
   drawCenteredLine(ctx, address, 614, 1262, 548, {
     color: '#9bfa76',
     maxSize: 45,
@@ -192,7 +193,7 @@ function drawAddress(ctx, address) {
 
 async function renderPoster(canvas, normalizedAddress, language) {
   const [template, qrImage] = await Promise.all([
-    loadPosterImage(),
+    loadPosterImage(language),
     QRCode.toDataURL(normalizedAddress.href, {
       errorCorrectionLevel: 'H',
       margin: 2,
@@ -230,7 +231,7 @@ async function renderPoster(canvas, normalizedAddress, language) {
     posterQrSize,
   );
   ctx.imageSmoothingEnabled = true;
-  drawAddress(ctx, normalizedAddress.display);
+  drawAddress(ctx, normalizedAddress.display, language);
 }
 
 function downloadCanvas(canvas, language) {
