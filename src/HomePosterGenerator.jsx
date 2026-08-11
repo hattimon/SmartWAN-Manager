@@ -12,7 +12,7 @@ import {
 
 const posterTemplateUrls = Object.freeze({
   en: `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template-en-clean.png`,
-  pl: `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template.png`,
+  pl: `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template-pl-clean.png`,
 });
 const posterQrSize = 346;
 const posterQrPanel = { x: 181, y: 709, width: 412, height: 392 };
@@ -179,10 +179,7 @@ function drawEnglishCopy(ctx) {
   });
 }
 
-function drawAddress(ctx, address, language) {
-  if (language !== 'en') {
-    roundedRect(ctx, 321, 1224, 585, 74, 16, 'rgba(4, 24, 29, 0.99)');
-  }
+function drawAddress(ctx, address) {
   drawCenteredLine(ctx, address, 614, 1262, 548, {
     color: '#9bfa76',
     maxSize: 45,
@@ -231,7 +228,7 @@ async function renderPoster(canvas, normalizedAddress, language) {
     posterQrSize,
   );
   ctx.imageSmoothingEnabled = true;
-  drawAddress(ctx, normalizedAddress.display, language);
+  drawAddress(ctx, normalizedAddress.display);
 }
 
 function downloadCanvas(canvas, language) {
