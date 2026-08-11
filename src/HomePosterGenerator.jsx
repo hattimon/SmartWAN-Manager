@@ -11,6 +11,8 @@ import {
 } from './homePoster.js';
 
 const posterTemplateUrl = `${import.meta.env.BASE_URL}assets/smartwan-home-poster-template.png`;
+const posterQrSize = 346;
+const posterQrPanel = { x: 181, y: 709, width: 412, height: 392 };
 
 const uiCopy = {
   en: {
@@ -194,7 +196,7 @@ async function renderPoster(canvas, normalizedAddress, language) {
     QRCode.toDataURL(normalizedAddress.href, {
       errorCorrectionLevel: 'H',
       margin: 2,
-      width: 346,
+      width: posterQrSize,
       color: { dark: '#000000', light: '#ffffff' },
     }).then(loadImage),
     document.fonts?.ready,
@@ -210,9 +212,23 @@ async function renderPoster(canvas, normalizedAddress, language) {
     drawEnglishCopy(ctx);
   }
 
-  roundedRect(ctx, 184, 706, 410, 409, 18, '#ffffff');
+  roundedRect(
+    ctx,
+    posterQrPanel.x,
+    posterQrPanel.y,
+    posterQrPanel.width,
+    posterQrPanel.height,
+    18,
+    '#ffffff',
+  );
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(qrImage, 216, 738, 346, 346);
+  ctx.drawImage(
+    qrImage,
+    posterQrPanel.x + (posterQrPanel.width - posterQrSize) / 2,
+    posterQrPanel.y + (posterQrPanel.height - posterQrSize) / 2,
+    posterQrSize,
+    posterQrSize,
+  );
   ctx.imageSmoothingEnabled = true;
   drawAddress(ctx, normalizedAddress.display);
 }
