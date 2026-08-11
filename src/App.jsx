@@ -45,6 +45,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from './api.js';
+import { selectAurelkaMeowFile } from './aurelkaAudio.js';
 import { createTranslator, languages } from './i18n.js';
 import { buildGoogleYoutubeGeminiDualWanRules, googleYoutubeGeminiCidrs } from './dualWanRuleTemplates.js';
 import DualWanServiceRouting from './DualWanServiceRouting.jsx';
@@ -3095,6 +3096,7 @@ function LoginCatMascot({
       notificationBulb: 'Aurelka notifications',
     };
   const failedWans = wanStatus.filter((wan) => !wan.online);
+  const failedWanCount = failedWans.length;
   const networkMood = statusStale || !wanStatus.length
     ? 'checking'
     : failedWans.length
@@ -3143,7 +3145,7 @@ function LoginCatMascot({
   });
   const dragRef = useRef({ pointerId: null, moved: false, startX: 0, startY: 0 });
   const aurelkaWorldRef = useRef(null);
-  const meowAudioRef = useRef(null);
+  const meowAudioRef = useRef(new Map());
   const knockAudioContextRef = useRef(null);
   const audioUnlockedRef = useRef(false);
   const notificationStateRef = useRef({
@@ -3179,11 +3181,11 @@ function LoginCatMascot({
       });
     return () => {
       cancelled = true;
-      if (meowAudioRef.current) {
-        meowAudioRef.current.pause();
-        meowAudioRef.current.currentTime = 0;
-        meowAudioRef.current = null;
-      }
+      meowAudioRef.current.forEach((audio) => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      meowAudioRef.current.clear();
       if (knockAudioContextRef.current) {
         void knockAudioContextRef.current.close().catch(() => undefined);
         knockAudioContextRef.current = null;
@@ -3271,10 +3273,17 @@ function LoginCatMascot({
 
   const meow = async () => {
     if (!aurelkaSoundEnabled) return;
-    const audio = meowAudioRef.current || new Audio('/audio/aurelka-meow.ogg');
-    meowAudioRef.current = audio;
+    const fileName = selectAurelkaMeowFile(failedWanCount);
+    const audioPath = `${import.meta.env.BASE_URL}audio/${fileName}`;
+    const audio = meowAudioRef.current.get(fileName) || new Audio(audioPath);
+    meowAudioRef.current.set(fileName, audio);
+    meowAudioRef.current.forEach((otherAudio) => {
+      if (otherAudio === audio) return;
+      otherAudio.pause();
+      otherAudio.currentTime = 0;
+    });
     audio.preload = 'auto';
-    audio.volume = networkMood === 'outage' ? 0.72 : 0.52;
+    audio.volume = networkMood === 'outage' ? 0.82 : 0.62;
     audio.currentTime = 0;
     try {
       await audio.play();
@@ -3403,12 +3412,10 @@ function LoginCatMascot({
     if (networkMood !== 'outage' || !aurelkaSoundEnabled) return undefined;
     let started = false;
     let reminderTimer = 0;
-    let secondMeowTimer = 0;
     const startOutageMeows = () => {
       if (started) return;
       started = true;
       void meow();
-      secondMeowTimer = window.setTimeout(() => void meow(), 1150);
       reminderTimer = window.setInterval(() => void meow(), 30_000);
     };
     if (audioUnlockedRef.current) {
@@ -3420,10 +3427,9 @@ function LoginCatMascot({
     return () => {
       window.removeEventListener('pointerdown', startOutageMeows);
       window.removeEventListener('keydown', startOutageMeows);
-      window.clearTimeout(secondMeowTimer);
       window.clearInterval(reminderTimer);
     };
-  }, [aurelkaSoundEnabled, networkMood]);
+  }, [aurelkaSoundEnabled, failedWanCount, networkMood]);
 
   const onPointerDown = (event) => {
     if (event.button !== 0) return;
