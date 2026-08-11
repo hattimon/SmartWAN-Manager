@@ -63,6 +63,7 @@ The login page provides:
 - a signed, `HttpOnly`, `SameSite=Lax` session lasting up to 12 hours;
 - a password-reset command that must be run locally or through SSH on the panel host;
 - Polish/English selection;
+- a bilingual home-panel poster generator that detects the current panel URL, accepts an optional alternative address, creates a locally generated QR code, and exports or prints the complete PNG graphic;
 - sound and animation controls for Aurelka;
 - an expandable read-only connection summary;
 - a read-only network-map preview and VPN download area for clients from configured trusted LAN/VPN subnets.
@@ -394,6 +395,7 @@ Ekran logowania zawiera:
 - podpisaną sesję `HttpOnly`, `SameSite=Lax` ważną maksymalnie 12 godzin;
 - instrukcję resetu hasła wykonywanego lokalnie albo przez SSH na hoście panelu;
 - wybór języka polskiego/angielskiego;
+- dwujęzyczny generator plakatu panelu domowego, który wykrywa bieżący adres panelu, przyjmuje opcjonalny adres alternatywny, lokalnie tworzy kod QR oraz pozwala pobrać lub wydrukować kompletną grafikę PNG;
 - sterowanie dźwiękiem i animacją Aurelki;
 - rozwijany, tylko do odczytu stan połączenia;
 - podgląd mapy sieci i obszar pobierania VPN dla klientów z dozwolonych podsieci LAN/VPN.

@@ -49,6 +49,7 @@ import { AURELKA_MEOW_FILES, selectAurelkaMeowFile } from './aurelkaAudio.js';
 import { createTranslator, languages } from './i18n.js';
 import { buildGoogleYoutubeGeminiDualWanRules, googleYoutubeGeminiCidrs } from './dualWanRuleTemplates.js';
 import DualWanServiceRouting from './DualWanServiceRouting.jsx';
+import HomePosterGenerator from './HomePosterGenerator.jsx';
 import RouterSetupWizard from './RouterSetupWizard.jsx';
 import { applyVpnProfile, vpnProfiles } from './vpnProfiles.js';
 import {
@@ -3904,6 +3905,7 @@ function LoginPanel({
             <strong>{t('appTitle')}</strong>
             <span>{t('panelLoginSubtitle')}</span>
           </div>
+          <HomePosterGenerator language={language} />
         </div>
         {notice ? <div className={`notice ${notice.includes(t('failed')) ? 'error' : ''}`}>{notice}</div> : null}
         {!auth.configured ? (
