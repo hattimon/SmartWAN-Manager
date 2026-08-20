@@ -140,22 +140,55 @@ function failedWanFromWatchdog(status = {}) {
   return reason.match(/^(wan[01])_failed_wan[01]_ok$/)?.[1] || '';
 }
 
+function activeWanFromWatchdog(status = {}) {
+  const explicit = String(status.active_default_wan || '').trim().toLowerCase();
+  if (/^wan[01]$/.test(explicit)) return explicit;
+  const reason = String(status.watchdog_state_last_switch_reason || '').trim().toLowerCase();
+  return reason.match(/^wan[01]_failed_(wan[01])_ok$/)?.[1] || '';
+}
+
 export function reconcileWanHealthWithWatchdog(wanStatus = [], status = {}) {
-  const failingHealthResults = new Set([
-    'partial_failure',
+  const completeFailureResults = new Set([
     'complete_failure',
     'link_down',
     'internet_failed',
     'test_forced_down',
   ]);
   const watchdogHealthActive = status.enabled === '1' && status.watchdog_enabled === '1';
-  const partialFailoverEnabled = status.watchdog_partial_failover_enabled !== '0';
   const healthReconciled = wanStatus.map((wan) => {
     const healthResult = String(status[`${wan.id}_health_result`] || '').toLowerCase();
-    if (!watchdogHealthActive || !failingHealthResults.has(healthResult)) return wan;
-    if (healthResult === 'partial_failure' && !partialFailoverEnabled) return wan;
+    if (!watchdogHealthActive || !healthResult || healthResult === 'not_checked') return wan;
+    const health = {
+      healthResult,
+      outageKind: status[`${wan.id}_health_outage_kind`] || '',
+      failureReason: status[`${wan.id}_health_failure_reason`] || '',
+      failureDetail: status[`${wan.id}_health_failure_detail`] || '',
+      serviceResult: status[`${wan.id}_health_service_result`] || '',
+    };
+    if (['ok', 'ok_icmp_unavailable'].includes(healthResult)) {
+      return {
+        ...wan,
+        ...health,
+        internetStatus: 'ok',
+        internetTarget: wan.internetTarget || 'watchdog',
+        internetSource: 'watchdog-health',
+        watchdogOverride: true,
+      };
+    }
+    if (healthResult === 'partial_failure') {
+      return {
+        ...wan,
+        ...health,
+        internetStatus: 'limited',
+        internetTarget: wan.internetTarget || 'watchdog',
+        internetSource: 'watchdog-health',
+        watchdogOverride: true,
+      };
+    }
+    if (!completeFailureResults.has(healthResult)) return { ...wan, ...health };
     return {
       ...wan,
+      ...health,
       internetStatus: 'failed',
       internetTarget: wan.internetTarget || 'watchdog',
       internetSource: 'watchdog-health',
@@ -167,12 +200,13 @@ export function reconcileWanHealthWithWatchdog(wanStatus = [], status = {}) {
   const failedWan = failedWanFromWatchdog(status);
   const recoveryPending = status.watchdog_state_last_switch_reason === 'all_wans_recovering';
   if (!failedWan || recoveryPending) return healthReconciled;
+  const failureStatus = status.watchdog_state_failure_kind === 'partial' ? 'limited' : 'failed';
 
   return healthReconciled.map((wan) => (
     wan.id === failedWan
       ? {
           ...wan,
-          internetStatus: 'failed',
+          internetStatus: failureStatus,
           internetTarget: wan.internetTarget || 'watchdog',
           internetSource: 'watchdog',
           watchdogOverride: true,
@@ -681,7 +715,10 @@ public_ip_for_ifname(){
       https://checkip.amazonaws.com \
       http://api.ipify.org
     do
-      ip="$(curl -4 --interface "$source_ip" --connect-timeout 1 --max-time 3 -fsSk "$endpoint" 2>/dev/null | tr -d '\\r' | head -n 1 || true)"
+      # A public-IP provider is supplementary telemetry. Keep every attempt
+      # short so a DNS/provider outage cannot block the complete router
+      # snapshot and turn a working WAN into a stale panel state.
+      ip="$(curl -4 --interface "$source_ip" --connect-timeout 1 --max-time 2 -fsSk "$endpoint" 2>/dev/null | tr -d '\\r' | head -n 1 || true)"
       case "$ip" in
         [0-9]*.[0-9]*.[0-9]*.[0-9]*)
           public_ip_status="ok"
@@ -975,12 +1012,16 @@ tail -n 120 /tmp/smartwan.log 2>/dev/null || true
 `;
 
   // A WAN transition can leave stale addresses/routes until ASUS finishes
-  // reconciling Dual WAN. Keep the full state read bounded, but do not mark
-  // SSH offline while the two forced Internet probes are completing.
-  const result = await execCommand(settings, 'sh -s', { timeoutMs: 30000, stdin: script });
+  // reconciling Dual WAN. Keep the full state read bounded, but allow enough
+  // time for both WAN-specific probes to finish when DNS or an external
+  // public-IP provider is unavailable after a router/panel restart.
+  const result = await execCommand(settings, 'sh -s', { timeoutMs: 45000, stdin: script });
   const sections = parseSections(result.stdout);
   const configValues = parseSmartwanConfig(sections.smartwan_config || '');
   const status = parseKeyValueBlock(sections.smartwan_status);
+  if (!status.active_default_wan && status.failover_override_active === '1') {
+    status.active_default_wan = activeWanFromWatchdog(status);
+  }
   const dualWan = parseAsusDualWanStatus(sections.asus_dualwan);
   const panelEnrichedWanStatus = await enrichWanStatusWithPanelPublicIps(
     withDualWanRoles(parseWanStatus(sections.wan_status), dualWan),
@@ -1191,7 +1232,9 @@ export async function installRouterScripts(settings, options = {}) {
   await execCommand(settings, `mkdir -p ${shellQuote(dir)} ${shellQuote(`${dir}/presets`)}`, { timeoutMs: 10000 });
 
   for (const file of files) {
-    const content = await fs.readFile(path.join(localDir, file), 'utf8');
+    // Router scripts may be built from a Windows checkout. Always send Unix
+    // line endings so the Asuswrt /bin/sh shebang remains executable.
+    const content = (await fs.readFile(path.join(localDir, file), 'utf8')).replace(/\r\n?/g, '\n');
     await remoteAtomicWrite(settings, `${dir}/${file}`, content, file.endsWith('.sh') ? '755' : '600');
     uploaded.push(file);
   }

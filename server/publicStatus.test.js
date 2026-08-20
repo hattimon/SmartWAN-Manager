@@ -196,6 +196,8 @@ test('an active failover overrides a static device rule pointing at the failed W
   assert.match(viewer.assignedWanLabel, /Fiber/);
   assert.equal(routing.outageKind, 'partial');
   assert.equal(routing.failureReason, 'https_timeout');
+  assert.equal(routing.wanStatus[1].limited, true);
+  assert.equal(routing.allWansDown, false);
 });
 
 test('confirmed active outage classification overrides a fluctuating later probe', () => {
@@ -270,4 +272,39 @@ test('does not claim traffic uses a WAN when both connections are down', () => {
   assert.equal(routing.activeWan, '');
   assert.equal(routing.allWansDown, true);
   assert.equal(routing.wanStatus.every((wan) => !wan.online), true);
+});
+
+test('keeps the watchdog-selected WAN usable when its panel probe is inconclusive', () => {
+  const effectiveState = applyActiveOutages({
+    ...state,
+    wanStatus: [
+      { ...state.wanStatus[0], internetStatus: 'failed' },
+      { ...state.wanStatus[1], internetStatus: 'failed' },
+    ],
+    status: {
+      ...state.status,
+      active_default_wan: '',
+      failover_override_active: '1',
+      watchdog_state_failed_wan: 'wan1',
+      watchdog_state_last_switch_reason: 'wan1_failed_wan0_ok',
+      watchdog_state_failure_kind: 'partial',
+      watchdog_state_failure_reason: 'dns_resolution_failed',
+    },
+  }, [{
+    id: 'router-outage-wan1',
+    wanId: 'wan1',
+    activeWan: 'wan0',
+    startedAt: '2026-08-20T17:44:13.000Z',
+    outageKind: 'partial',
+    failureReason: 'dns_resolution_failed',
+  }]);
+
+  const viewer = buildViewerRouting(effectiveState, '192.168.1.50');
+  const routing = buildRoutingSummary(effectiveState);
+  assert.equal(routing.activeWan, 'wan0');
+  assert.equal(routing.wanStatus[0].limited, true);
+  assert.equal(routing.wanStatus[1].limited, true);
+  assert.equal(routing.allWansDown, false);
+  assert.equal(viewer.routingMode, 'failover');
+  assert.equal(viewer.assignedWan, 'wan0');
 });

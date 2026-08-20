@@ -1464,6 +1464,24 @@ service_failure_reason_for_exit() {
   esac
 }
 
+resolve_service_ipv4() {
+  rs_host="$1"
+  [ -n "$rs_host" ] || return 1
+  rs_raw="$(nslookup "$rs_host" 2>/dev/null || true)"
+  rs_ip="$(printf '%s\n' "$rs_raw" | awk '
+    {
+      for (i = 1; i <= NF; i++) {
+        value = $i
+        gsub(/[^0-9.]/, "", value)
+        if (value ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) ip = value
+      }
+    }
+    END { print ip }
+  ')"
+  [ -n "$rs_ip" ] || return 1
+  printf '%s\n' "$rs_ip"
+}
+
 load_cached_service_probe() {
   swc_wan="$1"
   swc_state="$SMARTWAN_RUNTIME_DIR/smartwan-service-$swc_wan.state"
@@ -1590,12 +1608,33 @@ probe_services_via_wan() {
     [ "$swp_expected" != "$swp_spec" ] || swp_expected="200"
     swp_label="${swp_url#*://}"
     swp_label="${swp_label%%/*}"
+    swp_host="$swp_label"
+    case "$swp_host" in
+      *:*)
+        swp_port="${swp_host##*:}"
+        swp_host="${swp_host%%:*}"
+        ;;
+      *)
+        case "$swp_url" in
+          https://*) swp_port=443 ;;
+          *) swp_port=80 ;;
+        esac
+        ;;
+    esac
     swp_attempts=$((swp_attempts + 1))
     : > "$swp_error_file"
-    swp_http_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-      --interface "$swp_source_ip" --connect-timeout "$swp_timeout" --max-time "$swp_timeout" \
-      "$swp_url" 2>"$swp_error_file")"
-    swp_exit=$?
+    swp_resolved_ip="$(resolve_service_ipv4 "$swp_host" || true)"
+    if [ -n "$swp_resolved_ip" ]; then
+      swp_http_code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+        --interface "$swp_source_ip" --resolve "$swp_host:$swp_port:$swp_resolved_ip" \
+        --connect-timeout "$swp_timeout" --max-time "$swp_timeout" \
+        "$swp_url" 2>"$swp_error_file")"
+      swp_exit=$?
+    else
+      swp_http_code="000"
+      swp_exit=6
+      echo "Could not resolve $swp_host before the WAN-bound service probe" > "$swp_error_file"
+    fi
     if [ "$swp_exit" = "0" ] && [ "$swp_http_code" = "$swp_expected" ]; then
       swp_successes=$((swp_successes + 1))
       swp_probe_reason="ok"

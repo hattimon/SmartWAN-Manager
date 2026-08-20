@@ -5,8 +5,8 @@ import { selectDdnsWan } from './cloudflareDdnsStore.js';
 const state = {
   status: { active_default_wan: 'wan1' },
   wanStatus: [
-    { id: 'wan0', internetStatus: 'ok', publicIp: '150.228.91.90' },
-    { id: 'wan1', internetStatus: 'ok', publicIp: '91.197.91.141' },
+    { id: 'wan0', internetStatus: 'ok', publicIp: '198.51.100.10' },
+    { id: 'wan1', internetStatus: 'ok', publicIp: '203.0.113.20' },
   ],
 };
 
@@ -15,7 +15,7 @@ test('Cloudflare DDNS automatically follows the active SmartWAN default', () => 
 });
 
 test('Cloudflare DDNS respects an explicitly selected online WAN', () => {
-  assert.equal(selectDdnsWan(state, 'wan0')?.publicIp, '150.228.91.90');
+  assert.equal(selectDdnsWan(state, 'wan0')?.publicIp, '198.51.100.10');
 });
 
 test('Cloudflare DDNS falls back to the remaining online WAN', () => {
@@ -33,8 +33,8 @@ test('Cloudflare DDNS never publishes a last-confirmed stale WAN address', () =>
   const stateWithStaleIp = {
     status: { active_default_wan: 'wan1' },
     wanStatus: [
-      { id: 'wan0', internetStatus: 'ok', publicIp: '150.228.91.90' },
-      { id: 'wan1', internetStatus: 'ok', publicIp: '91.197.91.141', publicIpStale: true },
+      { id: 'wan0', internetStatus: 'ok', publicIp: '198.51.100.10' },
+      { id: 'wan1', internetStatus: 'ok', publicIp: '203.0.113.20', publicIpStale: true },
     ],
   };
   assert.equal(selectDdnsWan(stateWithStaleIp, 'auto')?.id, 'wan0');

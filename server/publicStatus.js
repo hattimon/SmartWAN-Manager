@@ -4,6 +4,14 @@ function online(wan) {
   return ['ok', 'reachable'].includes(String(wan?.internetStatus || '').toLowerCase());
 }
 
+function limited(wan) {
+  return String(wan?.internetStatus || '').toLowerCase() === 'limited';
+}
+
+function usable(wan) {
+  return online(wan) || limited(wan);
+}
+
 function wanName(wan = {}) {
   const label = wan.label || wan.id?.toUpperCase() || 'WAN';
   const port = wan.asusPort || wan.id?.toUpperCase() || 'WAN';
@@ -104,18 +112,49 @@ export function applyActiveOutages(state, activeOutages = []) {
   );
   if (outageByWan.size === 0) return state;
 
-  const wanStatus = (state.wanStatus || []).map((wan) => (
-    outageByWan.has(wan.id)
-      ? { ...wan, internetStatus: 'failed', internetSource: 'router-event-journal' }
-      : wan
-  ));
-  const onlineWans = wanStatus.filter((wan) => online(wan));
+  let wanStatus = (state.wanStatus || []).map((wan) => {
+    const outage = outageByWan.get(wan.id);
+    if (!outage) return wan;
+    return {
+      ...wan,
+      internetStatus: outage.outageKind === 'partial' ? 'limited' : 'failed',
+      outageKind: outage.outageKind || wan.outageKind || '',
+      failureReason: outage.failureReason || wan.failureReason || '',
+      failureDetail: outage.failureDetail || wan.failureDetail || '',
+      internetSource: 'router-event-journal',
+    };
+  });
+  const watchdogActiveWan = activeOutages
+    .map((outage) => outage?.activeWan)
+    .find((wanId) => (
+      wanId
+      && !outageByWan.has(wanId)
+      && state?.status?.watchdog_state_last_switch_reason === `${failedWanFromOutages(activeOutages)}_failed_${wanId}_ok`
+    ));
+  if (watchdogActiveWan && !wanStatus.some((wan) => wan.id === watchdogActiveWan && usable(wan))) {
+    // A per-WAN diagnostic may become inconclusive after the global override
+    // is installed. The watchdog decision still proves which WAN accepted the
+    // emergency route, so expose it as limited rather than claiming both links
+    // are completely offline.
+    wanStatus = wanStatus.map((wan) => (
+      wan.id === watchdogActiveWan
+        ? {
+            ...wan,
+            internetStatus: 'limited',
+            outageKind: wan.outageKind || 'partial',
+            failureReason: wan.failureReason || 'service_quorum_failed',
+            internetSource: 'watchdog-active-fallback',
+          }
+        : wan
+    ));
+  }
+  const usableWans = wanStatus.filter((wan) => usable(wan));
   const eventActiveWan = activeOutages
     .map((outage) => outage?.activeWan)
-    .find((wanId) => onlineWans.some((wan) => wan.id === wanId));
+    .find((wanId) => usableWans.some((wan) => wan.id === wanId));
   const activeWan = eventActiveWan
-    || onlineWans.find((wan) => wan.id === state?.status?.active_default_wan)?.id
-    || onlineWans[0]?.id
+    || usableWans.find((wan) => wan.id === state?.status?.active_default_wan)?.id
+    || usableWans[0]?.id
     || '';
   const latestOutage = [...activeOutages]
     .filter((outage) => outage?.startedAt)
@@ -144,6 +183,10 @@ export function applyActiveOutages(state, activeOutages = []) {
   };
 }
 
+function failedWanFromOutages(activeOutages = []) {
+  return activeOutages.find((outage) => outage?.wanId)?.wanId || '';
+}
+
 export function buildViewerRouting(state, clientIp) {
   const clients = state?.clients || [];
   const client = clients.find((item) => item.ip === clientIp) || {};
@@ -151,10 +194,10 @@ export function buildViewerRouting(state, clientIp) {
   const status = state?.status || {};
   const dualWan = state?.dualWan || {};
   const failoverActive = status.failover_override_active === '1';
-  const onlineWans = wanStatus.filter((wan) => online(wan));
-  const noInternet = wanStatus.length > 0 && onlineWans.length === 0;
-  const activeWan = onlineWans.find((wan) => wan.id === status.active_default_wan)
-    || onlineWans[0]
+  const usableWans = wanStatus.filter((wan) => usable(wan));
+  const noInternet = wanStatus.length > 0 && usableWans.length === 0;
+  const activeWan = usableWans.find((wan) => wan.id === status.active_default_wan)
+    || usableWans[0]
     || {};
   const explicitRule = asusFullTrafficRuleForIp(state, clientIp) || clientRuleForIp(state, clientIp);
   const ruleWan = explicitRule ? wanStatus.find((wan) => wan.id === explicitRule.wan) : null;
@@ -205,6 +248,7 @@ export function buildViewerRouting(state, clientIp) {
           ? wanName(activeWan)
           : '',
     description,
+    limited: limited(activeWan),
     routeCount: Number(dualWan.ruleCount || 0),
     serviceRuleCount: serviceRules.length,
     domainRuleCount: domainRules.length,
@@ -220,20 +264,28 @@ export function buildRoutingSummary(state) {
     || '';
   const recoveryPending = failoverActive
     && status.watchdog_state_last_switch_reason === 'all_wans_recovering';
-  const wanStatus = (state?.wanStatus || []).map((wan) => ({
-    id: wan.id,
-    label: wanName(wan),
-    operator: wan.label || '',
-    port: wan.asusPort || '',
-    online: !(failoverActive && failedWan === wan.id && !recoveryPending) && online(wan),
-    internetStatus:
-      failoverActive && failedWan === wan.id && !recoveryPending
-        ? 'failed'
-        : wan.internetStatus || 'unknown',
-  }));
-  const activeWan = wanStatus.find((wan) => wan.id === status.active_default_wan && wan.online)
-    || wanStatus.find((wan) => wan.online);
-  const allWansDown = wanStatus.length > 0 && wanStatus.every((wan) => !wan.online);
+  const partialFailedWan = status.watchdog_state_failure_kind === 'partial';
+  const wanStatus = (state?.wanStatus || []).map((wan) => {
+    const forcedStatus = failoverActive && failedWan === wan.id && !recoveryPending
+      ? (partialFailedWan ? 'limited' : 'failed')
+      : wan.internetStatus || 'unknown';
+    return {
+      id: wan.id,
+      label: wanName(wan),
+      operator: wan.label || '',
+      port: wan.asusPort || '',
+      online: ['ok', 'reachable'].includes(String(forcedStatus).toLowerCase()),
+      limited: String(forcedStatus).toLowerCase() === 'limited',
+      usable: ['ok', 'reachable', 'limited'].includes(String(forcedStatus).toLowerCase()),
+      internetStatus: forcedStatus,
+      outageKind: wan.outageKind || (failedWan === wan.id ? status.watchdog_state_failure_kind : '') || '',
+      failureReason: wan.failureReason || (failedWan === wan.id ? status.watchdog_state_failure_reason : '') || '',
+      failureDetail: wan.failureDetail || (failedWan === wan.id ? status.watchdog_state_failure_detail : '') || '',
+    };
+  });
+  const activeWan = wanStatus.find((wan) => wan.id === status.active_default_wan && wan.usable)
+    || wanStatus.find((wan) => wan.usable);
+  const allWansDown = wanStatus.length > 0 && wanStatus.every((wan) => !wan.usable);
   return {
     profile: currentProfile(state),
     dualWanEnabled: Boolean(dualWan.enabled),

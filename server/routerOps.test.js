@@ -74,7 +74,7 @@ test('classified health probes expose simultaneous WAN failures even without an 
   );
 
   assert.equal(reconciled[0].internetStatus, 'failed');
-  assert.equal(reconciled[1].internetStatus, 'failed');
+  assert.equal(reconciled[1].internetStatus, 'limited');
   assert.equal(reconciled[0].internetSource, 'watchdog-health');
   assert.equal(reconciled[1].internetSource, 'watchdog-health');
 });
@@ -89,5 +89,38 @@ test('a partial failure remains diagnostic-only when full-WAN partial failover i
     failover_override_active: '0',
   });
 
-  assert.deepEqual(reconciled, wanStatus);
+  assert.equal(reconciled[0].internetStatus, 'limited');
+  assert.equal(reconciled[0].internetSource, 'watchdog-health');
+});
+
+test('a healthy watchdog result overrides an inconclusive panel ICMP probe', () => {
+  const reconciled = reconcileWanHealthWithWatchdog(
+    [{ id: 'wan0', internetStatus: 'failed', internetSource: 'forced' }],
+    {
+      enabled: '1',
+      watchdog_enabled: '1',
+      wan0_health_result: 'ok',
+    },
+  );
+
+  assert.equal(reconciled[0].internetStatus, 'ok');
+  assert.equal(reconciled[0].internetSource, 'watchdog-health');
+});
+
+test('partial watchdog diagnostics preserve the reason for the limited state', () => {
+  const reconciled = reconcileWanHealthWithWatchdog(
+    [{ id: 'wan1', internetStatus: 'failed' }],
+    {
+      enabled: '1',
+      watchdog_enabled: '1',
+      wan1_health_result: 'partial_failure',
+      wan1_health_outage_kind: 'partial',
+      wan1_health_failure_reason: 'dns_resolution_failed',
+      wan1_health_failure_detail: 'ICMP works, DNS failed',
+    },
+  );
+
+  assert.equal(reconciled[0].internetStatus, 'limited');
+  assert.equal(reconciled[0].failureReason, 'dns_resolution_failed');
+  assert.match(reconciled[0].failureDetail, /DNS/);
 });

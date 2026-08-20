@@ -294,6 +294,11 @@ function publicNetworkMapState(state) {
       'linkStatus',
       'dhcpStatus',
       'internetStatus',
+      'healthResult',
+      'outageKind',
+      'failureReason',
+      'failureDetail',
+      'serviceResult',
     ])),
     status: pick(state?.status, [
       'enabled',

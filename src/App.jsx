@@ -2998,11 +2998,18 @@ function PublicNetworkStatus({ t, data, compact = false }) {
       <div className={`panel public-status-card routing ${routing.failoverActive ? 'warn' : ''}`}>
         <div className="public-status-heading"><Route size={19} /><h2>{t('currentRouting')}</h2></div>
         <div className="public-wan-lines">
-          {wanStatus.map((wan) => (
-            <span key={wan.id} className={wan.online ? 'ok' : 'down'}>
-              <i /> <b>{wan.label}</b> — {wan.online ? t('working') : t('noInternet')}
-            </span>
-          ))}
+          {wanStatus.map((wan) => {
+            const tone = wan.online ? 'ok' : wan.limited ? 'limited' : 'down';
+            const label = wan.online ? t('working') : wan.limited ? t('limitedAccess') : t('noInternet');
+            const reason = wan.limited && wan.failureReason
+              ? ` — ${outageReasonText(wan.failureReason, t)}`
+              : '';
+            return (
+              <span key={wan.id} className={tone}>
+                <i /> <b>{wan.label}</b> — {label}{reason}
+              </span>
+            );
+          })}
         </div>
         <div className="public-status-meta">
           <span>{t('activeProfile')}: <b>{routing.profile || t('unknown')}</b></span>
@@ -3064,6 +3071,8 @@ function LoginCatMascot({
       recentMessages: '5 ostatnich wiadomości',
       internetHappy: 'Internet śmiga! Wszystkie WAN-y mruczą 😸',
       statusChecking: 'Aurelka sprawdza łącza…',
+      limitedConnection: (name, reason) => `${name} działa w ograniczonym zakresie: ${reason}`,
+      limitedFallback: (name, reason) => `Dostęp do Internetu działa przez ${name}, ale w ograniczonym zakresie: ${reason}`,
       oneWanDown: (name) => `${name} nie działa!!!`,
       manyWansDown: (names) => `${names} nie działają!!!`,
       closeMessage: 'Zamknij wiadomość',
@@ -3090,6 +3099,8 @@ function LoginCatMascot({
       recentMessages: '5 latest messages',
       internetHappy: 'Internet is purring! All WANs are up 😸',
       statusChecking: 'Aurelka is checking the links…',
+      limitedConnection: (name, reason) => `${name} is working in a limited state: ${reason}`,
+      limitedFallback: (name, reason) => `Internet access is available through ${name}, but in a limited state: ${reason}`,
       oneWanDown: (name) => `${name} is down!!!`,
       manyWansDown: (names) => `${names} are down!!!`,
       closeMessage: 'Close message',
@@ -3107,13 +3118,19 @@ function LoginCatMascot({
       showBubbles: 'Show Aurelka bubbles',
       notificationBulb: 'Aurelka notifications',
     };
-  const failedWans = wanStatus.filter((wan) => !wan.online);
+  const limitedWans = wanStatus.filter((wan) => wan.limited);
+  const failedWans = wanStatus.filter((wan) => !wan.online && !wan.limited);
   const failedWanCount = failedWans.length;
+  const usableWans = wanStatus.filter((wan) => wan.online || wan.limited);
   const networkMood = statusStale || !wanStatus.length
     ? 'checking'
-    : failedWans.length
+    : usableWans.length === 0
       ? 'outage'
-      : 'happy';
+      : limitedWans.length
+        ? 'limited'
+        : failedWans.length
+          ? 'outage'
+          : 'happy';
   const failedWanNames = failedWans.map(
     (wan) => wan.operator || String(wan.label || wan.id || 'WAN').split('/')[0].trim(),
   );
@@ -3127,17 +3144,31 @@ function LoginCatMascot({
       .replace('{reason}', outageReasonText(failureReason, t))
       .replace('{active}', activeWanLabel || copy.statusChecking)
       : '';
+  const limitedWanNames = limitedWans.map(
+    (wan) => wan.operator || String(wan.label || wan.id || 'WAN').split('/')[0].trim(),
+  );
+  const limitedReason = [...new Set(limitedWans
+    .map((wan) => wan.failureReason)
+    .filter(Boolean)
+    .map((reason) => outageReasonText(reason, t)))]
+    .join('; ') || outageReasonText(failureReason || 'service_quorum_failed', t);
+  const limitedStatusText = limitedWans.length === 1 && usableWans.length === 1
+    ? copy.limitedFallback(activeWanLabel || limitedWanNames[0], limitedReason)
+    : copy.limitedConnection(limitedWanNames.join(' + ') || activeWanLabel, limitedReason);
   const networkStatusText = networkMood === 'happy'
     ? copy.internetHappy
     : networkMood === 'outage'
       ? classifiedOutageText || (failedWanNames.length === 1
         ? copy.oneWanDown(failedWanNames[0])
         : copy.manyWansDown(failedWanNames.join(' + ')))
-      : copy.statusChecking;
+      : networkMood === 'limited'
+        ? limitedStatusText
+        : copy.statusChecking;
   const eyeTone = (wanId) => {
     if (statusStale || !wanStatus.length) return 'checking';
     const wan = wanStatus.find((entry) => entry.id === wanId);
     if (!wan) return 'checking';
+    if (wan.limited) return 'limited';
     if (!wan.online) return 'down';
     if (recoveryPending && failedWan === wanId) return 'recovering';
     return 'healthy';
@@ -3146,7 +3177,7 @@ function LoginCatMascot({
   const wan1EyeTone = eyeTone('wan1');
   const bulbTone = networkMood === 'outage'
     ? 'danger'
-    : networkMood === 'checking' || recoveryPending
+    : networkMood === 'checking' || networkMood === 'limited' || recoveryPending
       ? 'warning'
       : 'healthy';
   const [dragState, setDragState] = useState({
@@ -3468,7 +3499,7 @@ function LoginCatMascot({
     statusStale ? 'stale' : 'fresh',
     recoveryPending ? 'recovering' : 'steady',
     failedWan || '-',
-    ...wanStatus.map((wan) => `${wan.id}:${wan.online ? 'up' : 'down'}`),
+    ...wanStatus.map((wan) => `${wan.id}:${wan.online ? 'up' : wan.limited ? 'limited' : 'down'}`),
   ].join('|');
 
   useEffect(() => {
@@ -3829,7 +3860,7 @@ function LoginCatMascot({
             ×
           </button>
           <div className={`aurelka-network-cloud ${networkMood}`} role="status" aria-live="polite">
-            <span aria-hidden="true">{networkMood === 'outage' ? '!!!' : networkMood === 'happy' ? '♥' : '…'}</span>
+            <span aria-hidden="true">{networkMood === 'outage' ? '!!!' : networkMood === 'happy' ? '♥' : networkMood === 'limited' ? '!' : '…'}</span>
             <strong>{networkStatusText}</strong>
           </div>
           {notes.length ? (
@@ -3934,22 +3965,30 @@ function LoginPanel({
   );
   const publicWans = publicMapState?.routing?.wanStatus || [];
   const onlineWanCount = publicWans.filter((wan) => wan.online).length;
+  const limitedWanCount = publicWans.filter((wan) => wan.limited).length;
+  const usableWanCount = onlineWanCount + limitedWanCount;
   const connectionTone = publicMapError && !publicMapState
     ? 'offline'
     : publicMapState?.stale
       ? 'stale'
       : onlineWanCount > 0
         ? 'online'
-        : 'loading';
+        : limitedWanCount > 0
+          ? 'limited'
+          : publicMapState
+            ? 'offline'
+            : 'loading';
   const connectionLabel = connectionTone === 'online'
     ? t('publicConnectionOnline')
+    : connectionTone === 'limited'
+      ? t('publicConnectionLimited')
     : connectionTone === 'stale'
       ? t('publicConnectionStale')
       : connectionTone === 'offline'
         ? t('publicConnectionOffline')
         : t('publicConnectionReading');
   const connectionSummary = publicMapState
-    ? `${onlineWanCount}/${publicWans.length || 0} WAN · VPN ${publicMapState.vpn?.interfaceUp ? t('connected') : t('disconnected')}`
+    ? `${usableWanCount}/${publicWans.length || 0} WAN · VPN ${publicMapState.vpn?.interfaceUp ? t('connected') : t('disconnected')}`
     : t('loadingPublicStatus');
   const routingStatus = publicMapState?.routing || {};
   const failedPublicWan = publicWans.find((wan) => wan.id === routingStatus.failedWan);
@@ -4301,7 +4340,7 @@ function DashboardPanel({
       : status.active_default_wan;
   const dashboardWans = routerState?.wanStatus || [];
   const dashboardAllWansDown = dashboardWans.length > 0
-    && dashboardWans.every((wan) => !['ok', 'reachable'].includes(String(wan.internetStatus || '').toLowerCase()));
+    && dashboardWans.every((wan) => !['ok', 'reachable', 'limited'].includes(String(wan.internetStatus || '').toLowerCase()));
   const dashboardFailoverNotice = dashboardAllWansDown
     ? t('allWansOutageNotice')
       .replace('{reason}', outageReasonText(status.watchdog_state_failure_reason || 'all_wans_unreachable', t))
@@ -4632,6 +4671,7 @@ function wanInternetOk(wan) {
 
 function wanInternetLabel(wan, t) {
   if (wan.internetStatus === 'ok') return t('internetOk');
+  if (wan.internetStatus === 'limited') return t('internetLimited');
   if (wan.internetStatus === 'failed') return t('internetFailed');
   if (wan.internetStatus === 'no_ip') return t('internetNoIp');
   if (wan.internetStatus === 'no_interface') return t('internetNoInterface');
@@ -4665,6 +4705,7 @@ function WanOverviewPanel({ t, wanStatus, status }) {
           const linkOk = wanLinkOk(wan);
           const ipOk = wanIpOk(wan);
           const internetOk = wanInternetOk(wan);
+          const internetLimited = wan.internetStatus === 'limited';
           const healthTone = wanHealthTone(wan);
           return (
             <div className={`wan-card ${active === wan.id ? 'active' : ''} ${healthTone}`} key={wan.id}>
@@ -4693,6 +4734,13 @@ function WanOverviewPanel({ t, wanStatus, status }) {
                   {t('wanInternet')}: <strong>{wanInternetLabel(wan, t)}</strong>
                 </span>
               </div>
+              {internetLimited ? (
+                <p className="wan-limited-detail">
+                  <AlertTriangle size={14} />
+                  {outageReasonText(wan.failureReason || 'service_quorum_failed', t)}
+                  {wan.failureDetail ? ` — ${wan.failureDetail}` : ''}
+                </p>
+              ) : null}
               <div className="wan-metrics">
                 <span>{t('wanIp')} <strong>{wan.ipaddr || 'n/a'}</strong></span>
                 <span>

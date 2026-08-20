@@ -383,7 +383,8 @@ button {
 }
 
 .aurelka-eye.tone-checking,
-.aurelka-eye.tone-recovering {
+.aurelka-eye.tone-recovering,
+.aurelka-eye.tone-limited {
   fill: url("#aurelka-eye-checking");
   filter: drop-shadow(0 0 5px rgba(255, 174, 41, 0.95));
   animation: aurelka-eye-checking 900ms ease-in-out infinite alternate;
@@ -739,6 +740,16 @@ button {
     0 9px 24px rgba(0, 0, 0, 0.38),
     0 0 0 3px rgba(23, 72, 49, 0.34),
     0 0 18px rgba(89, 231, 119, 0.24);
+}
+
+.aurelka-network-cloud.limited {
+  border-color: rgba(255, 179, 71, 0.82);
+  color: #fff2d6;
+  background: #5a3b16;
+  box-shadow:
+    0 9px 24px rgba(0, 0, 0, 0.38),
+    0 0 0 3px rgba(90, 59, 22, 0.34),
+    0 0 18px rgba(255, 159, 47, 0.38);
 }
 
 .aurelka-network-cloud.outage {
@@ -1756,6 +1767,11 @@ button {
   box-shadow: 0 0 0 5px rgba(255, 190, 64, 0.12), 0 0 15px rgba(255, 190, 64, 0.55);
 }
 
+.login-status-disclosure.limited .login-status-indicator i {
+  background: var(--warn);
+  box-shadow: 0 0 0 5px rgba(255, 190, 64, 0.12), 0 0 15px rgba(255, 190, 64, 0.55);
+}
+
 .login-status-disclosure.offline .login-status-indicator i {
   background: var(--danger);
   box-shadow: 0 0 0 5px rgba(255, 92, 92, 0.12), 0 0 15px rgba(255, 92, 92, 0.55);
@@ -1936,6 +1952,15 @@ button {
 .public-wan-lines .ok i {
   background: var(--ok);
   box-shadow: 0 0 9px rgba(87, 220, 108, 0.4);
+}
+
+.public-wan-lines .limited i {
+  background: var(--warn);
+  box-shadow: 0 0 9px rgba(255, 190, 64, 0.48);
+}
+
+.public-wan-lines .limited {
+  color: #ffe1a3;
 }
 
 .public-wan-lines b {
@@ -5598,6 +5623,21 @@ h3 {
 .wan-card.offline {
   border-color: rgba(255, 94, 99, 0.46);
   opacity: 0.9;
+}
+
+.wan-limited-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: -2px 0 10px;
+  color: #ffe1a3;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.wan-limited-detail svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .wan-card-head {
